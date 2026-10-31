@@ -23,6 +23,7 @@ Everything stays local in your vault: no cloud, no account and no background req
 
 - **A real book spread.** Two pages, a spine, a cover and a 3D page turn. Turn speed is adjustable and `prefers-reduced-motion` disables the animation.
 - **Live writing.** Pen, pencil, marker and highlighter with pressure support, a stroke eraser and separate ink layers.
+- **Shape assist.** A "Straighten shapes" switch per tool in the dock: a shaky line becomes straight, a scribbled circle becomes an ellipse and a rough box becomes a rectangle. It is deliberately conservative — intentional curves stay untouched — and it turns off with one click.
 - **Real paper.** Grain, lighting, a curved gutter and ruled, grid or dot layouts. Any image in your vault can become the paper texture; ink automatically adapts to light or dark paper.
 - **Photographs and ephemera.** Insert from a file, the clipboard or drag-and-drop; crop, tape, photo corners, stickers, bookmarks, frames and highlight strips.
 - **Bookmarks on top.** Tabs with icons and colours (Cream, Ocean, Sage, Rust, Plum, Gold, Charcoal, Rose), reorderable by dragging.
@@ -65,6 +66,7 @@ The repository ships the built `main.js` and `styles.css`, so no build step is n
 
 - `V` selects, `T` creates text, `P` draws, `E` erases and `I` inserts a photo. Shortcuts follow the physical key, so they work on Russian, French or any other layout. Tools live on the left rail; the palette and brush settings live in the right-hand dock.
 - Double-click a page to start a text block. Drag photographs onto a page or paste them from the clipboard.
+- The brush dock carries two switches: "Pen pressure" and "Straighten shapes". Both are remembered per pen, pencil, marker and highlighter.
 - Right-click or double-click a top tab for rename, **Tab colour**, icon and new page. Tab colours apply instantly.
 - The gear button opens notebook settings: theme, fonts, paper, size, sound and turn speed.
 - `Ctrl/Cmd+Z` and `Ctrl/Cmd+Shift+Z` undo and redo. History lives for the lifetime of the Obsidian tab.

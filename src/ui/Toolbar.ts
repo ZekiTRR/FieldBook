@@ -267,6 +267,18 @@ export class Toolbar {
         pressureRow.append(input, text);
         this.dockEl.appendChild(pressureRow);
       }
+
+      const assistRow = document.createElement("label");
+      assistRow.className = "fb-dock__toggle";
+      const assistInput = document.createElement("input");
+      assistInput.type = "checkbox";
+      assistInput.checked = tool.brushSettings.assist ?? false;
+      assistInput.addEventListener("change", () => this.actions.onBrushPatch({ assist: assistInput.checked }));
+      const assistText = document.createElement("span");
+      assistText.textContent = "Straighten shapes";
+      assistRow.append(assistInput, assistText);
+      assistRow.title = "Snaps near-straight lines, circles and boxes to clean shapes when you lift the pen.";
+      this.dockEl.appendChild(assistRow);
     } else {
       const eraserRow = this.buildRange(
         "Size",

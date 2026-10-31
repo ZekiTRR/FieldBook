@@ -47,6 +47,7 @@ export interface BrushSettings {
   size: number;
   opacity: number;
   pressure: boolean;
+  assist: boolean;
 }
 
 export interface CustomSounds {
@@ -123,10 +124,10 @@ export const DEFAULT_JOURNAL_SETTINGS: JournalSettings = {
   gridSize: 20,
   showContents: true,
   brushes: {
-    pen: { color: "#26303b", size: 3.2, opacity: 1, pressure: true },
-    pencil: { color: "#4a4740", size: 3.6, opacity: 0.78, pressure: true },
-    marker: { color: "#a24b34", size: 12, opacity: 0.55, pressure: false },
-    highlighter: { color: "#e8c54c", size: 28, opacity: 0.28, pressure: false },
+    pen: { color: "#26303b", size: 3.2, opacity: 1, pressure: true, assist: true },
+    pencil: { color: "#4a4740", size: 3.6, opacity: 0.78, pressure: true, assist: true },
+    marker: { color: "#a24b34", size: 12, opacity: 0.55, pressure: false, assist: true },
+    highlighter: { color: "#e8c54c", size: 28, opacity: 0.28, pressure: false, assist: true },
     eraserSize: 34,
     activeBrush: "pen",
     activeColor: "#26303b",

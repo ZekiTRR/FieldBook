@@ -21,6 +21,7 @@ import type { UndoRedoManager } from "../core/History";
 import type { AudioManager } from "../audio/AudioManager";
 import { InkRenderer } from "../drawing/InkRenderer";
 import { smoothPoint, simplifyStroke, type RawPoint } from "../drawing/Smoothing";
+import { assistStroke } from "../drawing/ShapeAssist";
 import {
   createDecorationElement,
   createDrawingElement,
@@ -142,7 +143,7 @@ interface ActiveStroke {
   pointerId: number;
   points: RawPoint[];
   lastRaw: RawPoint | null;
-  style: { brush: BrushKind; color: string; size: number; opacity: number; pressureEnabled: boolean };
+  style: { brush: BrushKind; color: string; size: number; opacity: number; pressureEnabled: boolean; assist: boolean };
   frame: number | null;
 }
 
@@ -938,6 +939,7 @@ export class PageView {
         size: tool.brushSettings.size,
         opacity: tool.brushSettings.opacity,
         pressureEnabled: tool.brushSettings.pressure && event.pointerType === "pen",
+        assist: tool.brushSettings.assist ?? false,
       },
       frame: null,
     };
@@ -1028,6 +1030,8 @@ export class PageView {
     this.ink.clearLive();
     if (!commit || active.points.length < 2 || !this.page) return;
     const simplified = simplifyStroke(active.points, 0.3);
+    const assisted = active.style.assist ? assistStroke(simplified, active.style.brush) : null;
+    const finalPoints = assisted?.points ?? simplified;
     const el = createDrawingElement(
       {
         brush: active.style.brush,
@@ -1037,7 +1041,7 @@ export class PageView {
           opacity: active.style.opacity,
           pressure: active.style.pressureEnabled,
         },
-        points: simplified.map((p) => ({ x: p.x, y: p.y, p: p.p, ...(p.tilt !== undefined ? { tilt: p.tilt } : {}) })),
+        points: finalPoints.map((p) => ({ x: p.x, y: p.y, p: p.p, ...(p.tilt !== undefined ? { tilt: p.tilt } : {}) })),
       },
       nextZ(this.page.elements),
     );

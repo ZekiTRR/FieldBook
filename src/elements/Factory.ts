@@ -162,7 +162,7 @@ export function createDecorationElement(
 
 export interface DrawingCreation {
   brush: DrawingElement["brush"];
-  settings: BrushSettings;
+  settings: Pick<BrushSettings, "color" | "size" | "opacity" | "pressure">;
   points: { x: number; y: number; p: number; tilt?: number }[];
 }
 

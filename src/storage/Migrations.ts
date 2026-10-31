@@ -254,13 +254,14 @@ export function normalizeJournalSettings(raw: unknown): JournalSettings {
   const record = isRecord(raw) ? raw : {};
   const d = DEFAULT_JOURNAL_SETTINGS;
   const brushesRaw = isRecord(record.brushes) ? record.brushes : {};
-  const brush = (key: keyof JournalSettings["brushes"], fallback: { color: string; size: number; opacity: number; pressure: boolean }) => {
+  const brush = (key: keyof JournalSettings["brushes"], fallback: { color: string; size: number; opacity: number; pressure: boolean; assist: boolean }) => {
     const entry = isRecord(brushesRaw[key]) ? (brushesRaw[key] as Record<string, unknown>) : {};
     return {
       color: str(entry.color, fallback.color),
       size: num(entry.size, fallback.size, 0.5, 120),
       opacity: num(entry.opacity, fallback.opacity, 0.02, 1),
       pressure: bool(entry.pressure, fallback.pressure),
+      assist: bool(entry.assist, fallback.assist),
     };
   };
   return {
