@@ -22,7 +22,12 @@ export default class FieldbookPlugin extends Plugin {
 
   async onload(): Promise<void> {
     await this.loadPluginSettings();
-    this.storage = new StorageManager(this.app, this.settings.dataFolder);
+    this.storage = new StorageManager(
+      this.app,
+      this.settings.dataFolder,
+      this.settings.attachmentsFolder,
+      this.settings.exportsFolder,
+    );
     this.store = new JournalManager(this.app, this.storage, "Fieldbook");
     try {
       await this.store.init();
@@ -175,6 +180,16 @@ export default class FieldbookPlugin extends Plugin {
     this.store = new JournalManager(this.app, this.storage, "Fieldbook");
     await this.store.init();
     await this.openNotebook();
+  }
+
+  /** Applies new attachment/export locations. Existing files stay where they are. */
+  async updateStorageFolders(
+    patch: Partial<Pick<PluginSettings, "attachmentsFolder" | "exportsFolder">>,
+  ): Promise<void> {
+    Object.assign(this.settings, patch);
+    await this.saveSettings();
+    this.storage.setFolders(this.settings.attachmentsFolder, this.settings.exportsFolder);
+    await this.storage.ensureFolders();
   }
 
   private getActiveView(): FieldbookView | null {

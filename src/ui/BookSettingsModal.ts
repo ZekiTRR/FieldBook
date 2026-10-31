@@ -9,6 +9,11 @@ export interface BookSettingsHost {
   pluginSettings: PluginSettings;
   updateJournal: (patch: Partial<JournalSettings>) => void;
   updateSound: (patch: Partial<PluginSettings>) => void;
+  updateStorage: (
+    patch: Partial<Pick<PluginSettings, "attachmentsFolder" | "exportsFolder">>,
+  ) => Promise<void>;
+  changeDataFolder: (folder: string) => Promise<void>;
+  storageDirs: () => { notebook: string; attachments: string; exports: string };
   playSound: (category: SoundCategory) => void;
   resizePages: (width: number, height: number) => void;
   openFullSettings: () => void;
@@ -221,6 +226,61 @@ export class BookSettingsModal extends Modal {
       this.host.updateJournal({
         autosaveDelay: Math.max(150, Math.min(10000, Number(autosaveInput.value) || 800)),
       });
+    });
+
+    const files = this.section(scroll, "Files");
+    const dirs = this.host.storageDirs();
+    const pathsHint = files.createDiv({
+      cls: "fb-setting-hint",
+      text: `Notebook: ${dirs.notebook} · Photos & sounds: ${dirs.attachments} · Exports: ${dirs.exports}`,
+    });
+
+    const notebookFolder = this.textRow(files, "Notebook folder", this.host.pluginSettings.dataFolder, "Fieldbook");
+    const applyNotebook = (notebookFolder.parentElement as HTMLElement).createEl("button", {
+      cls: "fb-button fb-button--small",
+      text: "Apply & reopen",
+    });
+    applyNotebook.addEventListener("click", () => {
+      const next = notebookFolder.value.trim() || "Fieldbook";
+      if (next === this.host.pluginSettings.dataFolder) return;
+      this.close();
+      void this.host.changeDataFolder(next);
+    });
+
+    const attachmentsFolder = this.textRow(
+      files,
+      "Attachments folder",
+      this.host.pluginSettings.attachmentsFolder,
+      "attachments",
+    );
+    const applyAttachments = (attachmentsFolder.parentElement as HTMLElement).createEl("button", {
+      cls: "fb-button fb-button--small",
+      text: "Apply",
+    });
+    applyAttachments.addEventListener("click", () => {
+      const next = attachmentsFolder.value.trim() || "attachments";
+      void this.host.updateStorage({ attachmentsFolder: next }).then(() => {
+        const fresh = this.host.storageDirs();
+        pathsHint.setText(`Notebook: ${fresh.notebook} · Photos & sounds: ${fresh.attachments} · Exports: ${fresh.exports}`);
+      });
+    });
+
+    const exportsFolder = this.textRow(files, "Exports folder", this.host.pluginSettings.exportsFolder, "exports");
+    const applyExports = (exportsFolder.parentElement as HTMLElement).createEl("button", {
+      cls: "fb-button fb-button--small",
+      text: "Apply",
+    });
+    applyExports.addEventListener("click", () => {
+      const next = exportsFolder.value.trim() || "exports";
+      void this.host.updateStorage({ exportsFolder: next }).then(() => {
+        const fresh = this.host.storageDirs();
+        pathsHint.setText(`Notebook: ${fresh.notebook} · Photos & sounds: ${fresh.attachments} · Exports: ${fresh.exports}`);
+      });
+    });
+
+    files.createDiv({
+      cls: "fb-setting-hint",
+      text: "Names without a leading slash live inside the notebook folder. Start with / to place files elsewhere in the vault, for example /98 - Cache/Fieldbook. Existing photos keep their current paths.",
     });
 
     const sound = this.section(scroll, "Sound");

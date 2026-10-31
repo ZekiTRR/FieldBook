@@ -59,6 +59,8 @@ export interface CustomSounds {
 
 export interface PluginSettings {
   dataFolder: string;
+  attachmentsFolder: string;
+  exportsFolder: string;
   soundEnabled: boolean;
   typingSoundEnabled: boolean;
   masterVolume: number;
@@ -68,6 +70,8 @@ export interface PluginSettings {
 
 export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   dataFolder: "Fieldbook",
+  attachmentsFolder: "attachments",
+  exportsFolder: "exports",
   soundEnabled: false,
   typingSoundEnabled: true,
   masterVolume: 0.7,

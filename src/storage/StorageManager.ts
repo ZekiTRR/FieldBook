@@ -9,15 +9,28 @@ export interface ReadResult<T> {
 export class StorageManager {
   readonly app: App;
   private folder: string;
+  private attachmentsFolder: string;
+  private exportsFolder: string;
 
-  constructor(app: App, folder: string) {
+  constructor(app: App, folder: string, attachments = "attachments", exports = "exports") {
     this.app = app;
     this.folder = StorageManager.normalizeFolder(folder);
+    this.attachmentsFolder = StorageManager.normalizeSubfolder(attachments, "attachments");
+    this.exportsFolder = StorageManager.normalizeSubfolder(exports, "exports");
   }
 
   static normalizeFolder(folder: string): string {
     const clean = normalizePath(folder.trim() || "Fieldbook").replace(/^\/+|\/+$/g, "");
     return clean || "Fieldbook";
+  }
+
+  static normalizeSubfolder(folder: string, fallback: string): string {
+    const trimmed = (folder ?? "").trim().replace(/\\/g, "/");
+    if (!trimmed || trimmed === "/") return fallback;
+    const absolute = trimmed.startsWith("/");
+    const clean = trimmed.replace(/\/+/g, "/").replace(/^\/+|\/+$/g, "");
+    if (!clean) return fallback;
+    return absolute ? `/${clean}` : clean;
   }
 
   get root(): string {
@@ -28,8 +41,28 @@ export class StorageManager {
     this.folder = StorageManager.normalizeFolder(folder);
   }
 
+  setFolders(attachments: string, exports: string): void {
+    this.attachmentsFolder = StorageManager.normalizeSubfolder(attachments, "attachments");
+    this.exportsFolder = StorageManager.normalizeSubfolder(exports, "exports");
+  }
+
   path(...parts: string[]): string {
     return normalizePath([this.folder, ...parts].filter(Boolean).join("/"));
+  }
+
+  /** A configured subfolder either inside the notebook folder or from the vault root. */
+  resolve(raw: string, fallback: string): string {
+    const value = StorageManager.normalizeSubfolder(raw, fallback);
+    if (value.startsWith("/")) return normalizePath(value.slice(1));
+    return this.path(value);
+  }
+
+  get attachmentsDir(): string {
+    return this.resolve(this.attachmentsFolder, "attachments");
+  }
+
+  get exportsDir(): string {
+    return this.resolve(this.exportsFolder, "exports");
   }
 
   get journalPath(): string {
@@ -40,19 +73,19 @@ export class StorageManager {
     return this.path("pages", `${id}.json`);
   }
 
-  attachmentPath(filename: string): string {
-    return this.path("attachments", filename);
+  attachmentPath(...parts: string[]): string {
+    return normalizePath([this.attachmentsDir, ...parts].filter(Boolean).join("/"));
   }
 
-  exportPath(filename: string): string {
-    return this.path("exports", filename);
+  exportPath(...parts: string[]): string {
+    return normalizePath([this.exportsDir, ...parts].filter(Boolean).join("/"));
   }
 
   async ensureFolders(): Promise<void> {
     await this.ensureFolder(this.folder);
     await this.ensureFolder(this.path("pages"));
-    await this.ensureFolder(this.path("attachments"));
-    await this.ensureFolder(this.path("exports"));
+    await this.ensureFolder(this.attachmentsDir);
+    await this.ensureFolder(this.exportsDir);
   }
 
   async ensureFolder(path: string): Promise<void> {

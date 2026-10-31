@@ -28,7 +28,7 @@ import type { AudioManager } from "../audio/AudioManager";
 import type { StorageManager } from "../storage/StorageManager";
 import { PageView, type PageHost, type ShapeStyle, type ToolState } from "../page/PageView";
 import { applyTheme, type PaperTone } from "../themes";
-import { isTypingTarget, parseWikiLink } from "../utils";
+import { isTypingTarget, parseWikiLink, physicalKey } from "../utils";
 import { saveImageFile } from "../utils/images";
 import { Toolbar, type ToolbarActions } from "../ui/Toolbar";
 import { TabsBar } from "../ui/TabsBar";
@@ -51,6 +51,10 @@ export interface FieldbookPluginLike {
   settings: PluginSettings;
   saveSettings: () => Promise<void>;
   openPluginSettings: () => void;
+  changeDataFolder: (folder: string) => Promise<void>;
+  updateStorageFolders: (
+    patch: Partial<Pick<PluginSettings, "attachmentsFolder" | "exportsFolder">>,
+  ) => Promise<void>;
 }
 
 interface ViewPages {
@@ -1434,7 +1438,7 @@ export class FieldbookView extends ItemView implements PageHost {
     }
     const mod = event.ctrlKey || event.metaKey;
     const key = event.key;
-    const lower = key.toLowerCase();
+    const lower = physicalKey(event);
     if (mod && lower === "z") {
       event.preventDefault();
       void (event.shiftKey ? this.redo() : this.undo());
@@ -1809,6 +1813,24 @@ export class FieldbookView extends ItemView implements PageHost {
       pluginSettings: this.plugin.settings,
       updateJournal: (patch) => this.store.updateSettings(patch),
       updateSound: (patch) => this.updateSoundSettings(patch),
+      updateStorage: async (patch) => {
+        await this.plugin.updateStorageFolders(patch);
+        const storage = this.store.storage;
+        if (patch.attachmentsFolder !== undefined) {
+          this.toast(`Photos and sounds now save to "${storage.attachmentsDir}".`);
+        } else if (patch.exportsFolder !== undefined) {
+          this.toast(`Exports now save to "${storage.exportsDir}".`);
+        }
+      },
+      changeDataFolder: (folder) => this.plugin.changeDataFolder(folder),
+      storageDirs: () => {
+        const storage = this.store.storage;
+        return {
+          notebook: storage.root,
+          attachments: storage.attachmentsDir,
+          exports: storage.exportsDir,
+        };
+      },
       playSound: (category: SoundCategory) => this.audio.play(category),
       resizePages: (width, height) => void this.resizeAllPages(width, height),
       openFullSettings: () => this.plugin.openPluginSettings(),

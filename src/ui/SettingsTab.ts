@@ -22,6 +22,8 @@ const SOUND_LABELS: { id: SoundCategory; label: string }[] = [
 export class FieldbookSettingsTab extends PluginSettingTab {
   private readonly plugin: SettingsPlugin;
   private folderDraft = "";
+  private attachmentsDraft = "";
+  private exportsDraft = "";
 
   constructor(app: App, plugin: SettingsPlugin) {
     super(app, plugin as never);
@@ -33,6 +35,8 @@ export class FieldbookSettingsTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.addClass("fieldbook-settings-tab");
     this.folderDraft = this.plugin.settings.dataFolder;
+    this.attachmentsDraft = this.plugin.settings.attachmentsFolder;
+    this.exportsDraft = this.plugin.settings.exportsFolder;
 
     containerEl.createEl("h2", { text: "Fieldbook" });
     containerEl.createEl("p", {
@@ -78,6 +82,52 @@ export class FieldbookSettingsTab extends PluginSettingTab {
             new Notice(`Fieldbook now uses "${next}".`);
             this.display();
           }),
+      );
+
+    new Setting(containerEl)
+      .setName("Attachments folder")
+      .setDesc(
+        `Where photos, pasted images and imported sounds are saved. Relative to the notebook folder (for example "Media") or from the vault root when it starts with "/". Currently: ${this.plugin.storage.attachmentsDir}`,
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder("attachments")
+          .setValue(this.attachmentsDraft)
+          .onChange((value) => {
+            this.attachmentsDraft = value;
+          }),
+      )
+      .addButton((button) =>
+        button.setButtonText("Apply").onClick(async () => {
+          const next = this.attachmentsDraft.trim() || "attachments";
+          if (next === this.plugin.settings.attachmentsFolder) return;
+          await this.plugin.updateStorageFolders({ attachmentsFolder: next });
+          new Notice(`Fieldbook saves new files to "${this.plugin.storage.attachmentsDir}".`);
+          this.display();
+        }),
+      );
+
+    new Setting(containerEl)
+      .setName("Exports folder")
+      .setDesc(
+        `Where Markdown and PNG exports are written. Currently: ${this.plugin.storage.exportsDir}`,
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder("exports")
+          .setValue(this.exportsDraft)
+          .onChange((value) => {
+            this.exportsDraft = value;
+          }),
+      )
+      .addButton((button) =>
+        button.setButtonText("Apply").onClick(async () => {
+          const next = this.exportsDraft.trim() || "exports";
+          if (next === this.plugin.settings.exportsFolder) return;
+          await this.plugin.updateStorageFolders({ exportsFolder: next });
+          new Notice(`Fieldbook exports to "${this.plugin.storage.exportsDir}".`);
+          this.display();
+        }),
       );
 
     new Setting(containerEl)
@@ -223,7 +273,7 @@ export class FieldbookSettingsTab extends PluginSettingTab {
             .replace(/[^\p{L}\p{N}_-]+/gu, "-")
             .replace(/^-+|-+$/g, "")
             .slice(0, 60) || "sound";
-        const path = this.plugin.storage.path("attachments", "sounds", `${stem}-${Date.now()}.${ext}`);
+        const path = this.plugin.storage.attachmentPath("sounds", `${stem}-${Date.now()}.${ext}`);
         try {
           await this.plugin.storage.writeBinary(path, await file.arrayBuffer());
           this.plugin.settings.customSounds[category] = path;

@@ -30,6 +30,7 @@ Everything stays local in your vault: no cloud, no account and no background req
 - **Sound.** A recorded page turn, a real pencil-on-paper loop, quiet typing and per-category volumes. Every sound can be replaced with your own file.
 - **Themes and typography.** Classic Journal, Old Manuscript, Clean Paper, Dark Journal and Field Research; handwritten Caveat and Neucha plus system fonts for headings and body text.
 - **Sizes.** A virtual page format (A5-like by default) and an on-screen notebook size from 50% to 100% of the workspace.
+- **Flexible storage.** Separate settings for the notebook folder, the attachments folder (photos, pasted images, sounds) and the exports folder — inside the notebook or anywhere in the vault.
 - **Export.** Page to PNG, page to Markdown and Markdown import split across pages.
 - **Focus mode.** The notebook takes over the window without Obsidian panels; leave with `Esc`.
 
@@ -62,7 +63,7 @@ The repository ships the built `main.js` and `styles.css`, so no build step is n
 
 ## Usage
 
-- `V` selects, `T` creates text, `P` draws and `E` erases. Tools live on the left rail; the palette and brush settings live in the right-hand dock.
+- `V` selects, `T` creates text, `P` draws, `E` erases and `I` inserts a photo. Shortcuts follow the physical key, so they work on Russian, French or any other layout. Tools live on the left rail; the palette and brush settings live in the right-hand dock.
 - Double-click a page to start a text block. Drag photographs onto a page or paste them from the clipboard.
 - Right-click or double-click a top tab for rename, **Tab colour**, icon and new page. Tab colours apply instantly.
 - The gear button opens notebook settings: theme, fonts, paper, size, sound and turn speed.
@@ -72,6 +73,7 @@ The repository ships the built `main.js` and `styles.css`, so no build step is n
 
 - **Notebook.** Theme, heading and body fonts, paper texture.
 - **Book.** Page-turn animation and speed, on-screen notebook size, page numbers, snap to grid, virtual page size, autosave delay.
+- **Files.** The notebook folder, the attachments folder (photographs, pasted images, imported sounds) and the exports folder. A value without a leading `/` is relative to the notebook folder (`Media` → `Fieldbook/Media`); a leading `/` addresses the vault root (`/98 - Cache/Fieldbook`).
 - **Sound.** Global sound, volume, keyboard writing sound, page-turn recording and per-category volumes: Page turns, Tabs, Pen & pencil, Photos & tape, Interface.
 - **Page.** Background for new pages (plain, ruled, grid, dots), contents, size.
 - **Tabs.** Colour and icon for every bookmark.
@@ -88,7 +90,7 @@ Fieldbook/
 └── exports/          # Markdown and PNG exports
 ```
 
-Every save keeps a `.bak` copy next to the file; if a JSON file cannot be read, Fieldbook recovers it from the backup. The folder can be changed in the plugin settings.
+Every save keeps a `.bak` copy next to the file; if a JSON file cannot be read, Fieldbook recovers it from the backup. The settings let you move the notebook folder itself, the attachments folder and the exports folder — either inside the notebook or anywhere else in the vault. Photographs that are already in the notebook keep their current paths.
 
 ## Development
 

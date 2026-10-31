@@ -202,8 +202,20 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
+/**
+ * Layout-independent key identity: "KeyV" is always "v", no matter whether the
+ * user types on a QWERTY, ЙЦУКЕН or Dvorak layout.
+ */
+export function physicalKey(event: KeyboardEvent): string {
+  const code = event.code ?? "";
+  const letter = /^Key([A-Z])$/.exec(code);
+  if (letter) return letter[1].toLowerCase();
+  const digit = /^Digit([0-9])$/.exec(code);
+  if (digit) return digit[1];
+  return (event.key ?? "").toLowerCase();
+}
+
+export function isTypingTarget(target: EventTarget | null): boolean {  if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName.toLowerCase();
   return (
     target.isContentEditable ||
