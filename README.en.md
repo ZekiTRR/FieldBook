@@ -60,6 +60,8 @@ Requires Obsidian 1.5.0 or newer, desktop only.
 2. Enable the plugin: **Settings → Community plugins → Fieldbook**.
 3. Open the notebook with the `Fieldbook: Open notebook` command or from the ribbon.
 
+Or copy `main.js`, `manifest.json`, `styles.css` from the [latest release](https://github.com/ZekiTRR/FieldBook/releases/latest) into `<vault>/.obsidian/plugins/fieldbook/`.
+
 The repository ships the built `main.js` and `styles.css`, so no build step is needed for installation.
 
 ## Usage

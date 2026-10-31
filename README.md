@@ -60,6 +60,8 @@ Fieldbook — это не ещё один холст для заметок, а �
 2. Включите плагин: **Settings → Community plugins → Fieldbook**.
 3. Откройте блокнот командой `Fieldbook: Open notebook` или через ленту слева.
 
+Можно и вручную: скачать `main.js`, `manifest.json` и `styles.css` из [последнего релиза](https://github.com/ZekiTRR/FieldBook/releases/latest) и положить их в `<vault>/.obsidian/plugins/fieldbook/`.
+
 В репозитории уже лежат собранные `main.js` и `styles.css`, поэтому для установки ничего собирать не нужно.
 
 ## Как пользоваться
