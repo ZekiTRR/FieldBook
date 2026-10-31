@@ -1,0 +1,9 @@
+{
+  "id": "fieldbook",
+  "name": "Fieldbook",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "An interactive paper notebook with a real book feel: freeform pages, handwriting, photos, tape, layers and a two-page spread.",
+  "author": "YOKOSHIP",
+  "isDesktopOnly": true
+}

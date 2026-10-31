@@ -1,0 +1,10 @@
+node_modules/
+data.json
+*.map
+.DS_Store
+Thumbs.db
+.hotreload/
+
+# The local duplicate of the bundled page-turn recording.
+assets/*.mp3
+!assets/page-turn.mp3
