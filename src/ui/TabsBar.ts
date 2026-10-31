@@ -26,7 +26,7 @@ export class TabsBar {
   }
 
   render(): void {
-    this.el.innerHTML = "";
+    this.el.replaceChildren();
     const activeId = this.actions.getActiveTabId();
     const theme = this.actions.getTheme();
     const tabs = this.actions.getTabs();

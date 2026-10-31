@@ -9,6 +9,7 @@ import { JournalManager } from "./core/JournalManager";
 import { AudioManager } from "./audio/AudioManager";
 import { FieldbookView } from "./views/FieldbookView";
 import { FieldbookSettingsTab } from "./ui/SettingsTab";
+import { closeAllPopovers } from "./ui/Popover";
 
 interface StoredData {
   settings?: Partial<PluginSettings>;
@@ -118,9 +119,9 @@ export default class FieldbookPlugin extends Plugin {
   }
 
   onunload(): void {
+    closeAllPopovers();
     this.audio?.dispose();
     void this.store?.flush();
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE);
   }
 
   private async loadPluginSettings(): Promise<void> {

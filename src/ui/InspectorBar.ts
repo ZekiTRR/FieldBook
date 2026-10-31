@@ -23,6 +23,7 @@ export class InspectorBar {
   private readonly el: HTMLElement;
   private readonly actions: InspectorActions;
   private pickingColor = false;
+  private colorPickOff: (() => void) | null = null;
 
   constructor(parent: HTMLElement, actions: InspectorActions) {
     this.actions = actions;
@@ -32,7 +33,7 @@ export class InspectorBar {
   }
 
   render(info: SelectionInfo, view: PageView): void {
-    this.el.innerHTML = "";
+    this.el.replaceChildren();
     this.el.classList.toggle("is-visible", info.count > 0);
     if (!info.count) return;
     const first = view.getSelectedElements()[0];
@@ -271,9 +272,13 @@ export class InspectorBar {
     input.type = "color";
     if (current.startsWith("#")) input.value = current;
     let safety = 0;
-    const endPicking = () => {
+    const release = () => {
       window.clearTimeout(safety);
       document.removeEventListener("pointerdown", onOutside, true);
+      if (this.colorPickOff === release) this.colorPickOff = null;
+    };
+    const endPicking = () => {
+      release();
       if (!this.pickingColor) return;
       this.pickingColor = false;
       this.actions.refresh();
@@ -282,11 +287,13 @@ export class InspectorBar {
       if (!custom.contains(event.target as Node)) endPicking();
     };
     const beginPicking = () => {
+      this.colorPickOff?.();
       this.pickingColor = true;
       window.clearTimeout(safety);
       safety = window.setTimeout(endPicking, 20000);
       document.removeEventListener("pointerdown", onOutside, true);
       document.addEventListener("pointerdown", onOutside, true);
+      this.colorPickOff = release;
     };
     input.addEventListener("pointerdown", beginPicking);
     input.addEventListener("keydown", beginPicking);
@@ -306,12 +313,15 @@ export class InspectorBar {
   }
 
   clear(): void {
+    this.colorPickOff?.();
     this.pickingColor = false;
-    this.el.innerHTML = "";
+    this.el.replaceChildren();
     this.el.classList.remove("is-visible");
   }
 
   destroy(): void {
+    this.colorPickOff?.();
+    this.pickingColor = false;
     this.el.remove();
   }
 }

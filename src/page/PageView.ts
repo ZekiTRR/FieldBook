@@ -333,7 +333,7 @@ export class PageView {
     this.root.classList.toggle("is-contents", page.kind === "contents");
     this.titleEl.textContent = page.kind === "contents" ? "" : this.meta?.title ?? page.title;
     this.updateNumber();
-    this.contentEl.innerHTML = "";
+    this.contentEl.replaceChildren();
     this.elementNodes.clear();
     this.layerContainers.clear();
     this.layerCanvases.clear();
@@ -679,8 +679,8 @@ export class PageView {
   // ---------------------------------------------------------------------
 
   private updateSelectionOverlay(): void {
-    this.outlineEl.innerHTML = "";
-    this.handlesEl.innerHTML = "";
+    this.outlineEl.replaceChildren();
+    this.handlesEl.replaceChildren();
     if (this.staticMode || !this.page || this.page.kind === "contents") return;
     if (this.editing) return;
     const elements = this.getSelectedElements();
@@ -785,7 +785,7 @@ export class PageView {
   }
 
   private updateGuides(guides: { axis: "x" | "y"; value: number }[]): void {
-    this.guidesEl.innerHTML = "";
+    this.guidesEl.replaceChildren();
     for (const guide of guides) {
       const line = document.createElement("div");
       line.className = `fb-guide fb-guide--${guide.axis}`;
@@ -796,7 +796,7 @@ export class PageView {
   }
 
   private clearGuides(): void {
-    this.guidesEl.innerHTML = "";
+    this.guidesEl.replaceChildren();
   }
 
   // ---------------------------------------------------------------------
@@ -1501,7 +1501,7 @@ export class PageView {
     const node = this.elementNodes.get(el.id);
     if (!node) return;
     if (el.type === "shape") {
-      node.innerHTML = "";
+      node.replaceChildren();
       node.appendChild(createElementNode(el, (p) => this.host.resourcePath(p), (p) => this.host.attachmentExists(p)).firstElementChild ?? document.createElement("span"));
       applyElementFrame(node, el);
       return;

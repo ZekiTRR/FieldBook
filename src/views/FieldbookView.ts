@@ -34,7 +34,7 @@ import { Toolbar, type ToolbarActions } from "../ui/Toolbar";
 import { TabsBar } from "../ui/TabsBar";
 import { InspectorBar } from "../ui/InspectorBar";
 import { openLayersPanel } from "../ui/LayersPanel";
-import { openPopover, popoverHeading, popoverItem } from "../ui/Popover";
+import { closeAllPopovers, openPopover, popoverHeading, popoverItem } from "../ui/Popover";
 import { PromptModal, ConfirmModal, ImagePickerModal, FilePickerModal } from "../ui/BasicModals";
 import { CropModal } from "../ui/CropModal";
 import { PageManagerModal } from "../ui/PageManagerModal";
@@ -238,6 +238,7 @@ export class FieldbookView extends ItemView implements PageHost {
 
   async onClose(): Promise<void> {
     this.closing = true;
+    closeAllPopovers();
     this.unsubscribeStore?.();
     this.unsubscribeStore = null;
     if (this.structureTimer !== null) window.clearTimeout(this.structureTimer);

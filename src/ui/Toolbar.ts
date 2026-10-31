@@ -151,13 +151,13 @@ export class Toolbar {
       this.buildDock(tool);
     } else if (!shouldShow) {
       this.dockKey = "";
-      this.dockEl.innerHTML = "";
+      this.dockEl.replaceChildren();
     }
     if (shouldShow) this.syncDockValues(tool);
   }
 
   private buildDock(tool: ToolState): void {
-    this.dockEl.innerHTML = "";
+    this.dockEl.replaceChildren();
     this.sizeLabel = null;
     this.opacityLabel = null;
     this.colorInput = null;

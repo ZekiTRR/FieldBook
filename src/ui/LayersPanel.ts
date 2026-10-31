@@ -16,7 +16,7 @@ export function openLayersPanel(anchor: HTMLElement, view: PageView | null): voi
     anchor,
     (host) => {
       const render = () => {
-        host.innerHTML = "";
+        host.replaceChildren();
         popoverHeading(host, "Layers");
         const page = view.page;
         if (!page) return;

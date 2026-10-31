@@ -12,12 +12,19 @@ export interface PopoverHandle {
   refreshPosition: () => void;
 }
 
+let activeClose: (() => void) | null = null;
+
+/** Closes the open popover, if any, and releases its document-level listeners. */
+export function closeAllPopovers(): void {
+  activeClose?.();
+}
+
 export function openPopover(
   anchor: HTMLElement,
   build: (host: HTMLElement, close: () => void) => void,
   options: PopoverOptions = {},
 ): PopoverHandle {
-  document.querySelectorAll(".fb-popover").forEach((el) => el.remove());
+  closeAllPopovers();
   const el = document.createElement("div");
   el.className = `fb-popover${options.className ? ` ${options.className}` : ""}`;
   if (options.width) el.style.width = `${options.width}px`;
@@ -28,6 +35,7 @@ export function openPopover(
     document.removeEventListener("keydown", onKey, true);
     window.removeEventListener("resize", refreshPosition);
     window.removeEventListener("scroll", refreshPosition, true);
+    if (activeClose === close) activeClose = null;
   };
   const outside = (event: PointerEvent) => {
     const target = event.target as Node | null;
@@ -59,6 +67,7 @@ export function openPopover(
   document.addEventListener("keydown", onKey, true);
   window.addEventListener("resize", refreshPosition);
   window.addEventListener("scroll", refreshPosition, true);
+  activeClose = close;
   return { el, close, refreshPosition };
 }
 
