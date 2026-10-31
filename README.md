@@ -1,120 +1,124 @@
-<div align="center">
-  <img src="docs/images/overview.webp" alt="Fieldbook — разворот бумажного блокнота в Obsidian" width="100%">
-  <h1>Fieldbook</h1>
-  <p><strong>Настоящий бумажный блокнот внутри Obsidian.</strong><br>
-  Двухстраничный разворот, живое перо, фотографии на скотче, закладки, слои и звук перелистывания.</p>
-  <p>
-    <a href="README.en.md">English</a> · <strong>Русский</strong>
-  </p>
-  <p>
-    <img src="https://img.shields.io/badge/Obsidian-1.5%2B-5D3FD3?style=flat-square" alt="Obsidian 1.5+">
-    <img src="https://img.shields.io/badge/platform-desktop-6B5B4B?style=flat-square" alt="Desktop">
-    <img src="https://img.shields.io/badge/license-MIT-3F6B4F?style=flat-square" alt="MIT">
-  </p>
-</div>
+![Fieldbook — a paper notebook spread inside Obsidian](docs/images/overview.webp)
 
-## О блокноте
+# Fieldbook
 
-Fieldbook — это не ещё один холст для заметок, а физический блокнот, который лежит на рабочем столе Obsidian. Страницы живут в развороте на две стороны, перелистываются с перспективой и звуком, а рисование, текст, фотографии и декорации ощущаются как работа с бумагой.
+**A real paper notebook inside Obsidian.** A two-page spread, live ink, taped photographs, bookmarks, layers and page-turn sounds.
 
-Всё хранится локально в вашем хранилище: без облака, без аккаунта и без фоновых запросов. Плагин работает только на десктопе.
+English · [Русский](README.ru.md)
 
-## Возможности
+[![Obsidian 1.5+](https://img.shields.io/badge/Obsidian-1.5%2B-5D3FD3?style=flat-square)](https://github.com/ZekiTRR/FieldBook)
+[![Desktop only](https://img.shields.io/badge/platform-desktop-6B5B4B?style=flat-square)](https://github.com/ZekiTRR/FieldBook)
+[![License MIT](https://img.shields.io/badge/license-MIT-3F6B4F?style=flat-square)](LICENSE)
 
-- **Книжный разворот.** Две страницы, корешок, обложка и перелистывание с 3D-перспективой. Скорость анимации настраивается, при `prefers-reduced-motion` анимация отключается.
-- **Живое письмо.** Перо, карандаш, маркер и выделитель с чувствительностью к нажатию, ластик для целых штрихов, слои для чернил.
-- **Выравнивание фигур.** Отдельный переключатель «Straighten shapes» в доке для каждого инструмента: дрожащая линия становится ровной, набросанный круг — эллипсом, а «рамка» — прямоугольником. Работает консервативно: осмысленные изгибы и зарисовки остаются как есть, отключается одним кликом.
-- **Настоящая бумага.** Зерно, освещение, сгиб у корешка, линейка, сетка или точки. Можно подставить любую текстуру из хранилища — цвет чернил автоматически подстроится под светлую или тёмную бумагу.
-- **Фотографии и мелочи.** Вставка из файла, буфера обмена или перетаскиванием, кадрирование, скотч, фотоуголки, стикеры, закладки, рамки и полосы выделения.
-- **Закладки сверху.** Вкладки-закладки с иконками и цветами (Cream, Ocean, Sage, Rust, Plum, Gold, Charcoal, Rose), перетаскивание для смены порядка.
-- **Структура.** Менеджер страниц, корзина, оглавление, перемещение страниц между вкладками.
-- **Звук.** Записанное перелистывание, живой луп карандаша по бумаге, тихая печать и отдельные громкости для каждой категории. Любой звук можно заменить своим файлом.
-- **Темы и типографика.** Classic Journal, Old Manuscript, Clean Paper, Dark Journal и Field Research; рукописные Caveat и Neucha, а также системные шрифты для заголовков и текста.
-- **Размеры.** Формат страницы (A5-подобный по умолчанию) и размер блокнота на экране от 50 до 100% рабочей области.
-- **Гибкое хранение.** Отдельные настройки для папки блокнота, папки вложений (фото, вставленные картинки, звуки) и папки экспорта — внутри блокнота или в любом месте хранилища.
-- **Экспорт.** Страница в PNG, страница в Markdown, импорт Markdown с разбиением на страницы.
-- **Focus mode.** Блокнот на весь экран без панелей Obsidian; выход по `Esc`.
+## About
 
-## Скриншоты
+Fieldbook is not another blank canvas. It is a physical notebook that sits on your Obsidian desk: pages live in a two-page spread, turn in perspective with a paper sound, and make writing, typing, photographs and decorations feel like working with paper.
 
-| Инструменты рисования | Цвета, материалы и инспектор |
+Everything stays inside your vault. No cloud, no account, no payment and no network requests at runtime.
+
+## Features
+
+- **A real book spread.** Two pages, a spine, a cover and a 3D page turn. Turn speed is adjustable and `prefers-reduced-motion` disables the animation.
+- **Live writing.** Pen, pencil, marker and highlighter with pressure support, a stroke eraser and separate ink layers.
+- **Shape assist.** A "Straighten shapes" switch per tool in the dock: a shaky line becomes straight, a scribbled circle becomes an ellipse and a rough box becomes a rectangle. It is deliberately conservative — intentional curves stay untouched — and it turns off with one click.
+- **Real paper.** Grain, lighting, a curved gutter and ruled, grid or dot layouts. Any image in your vault can become the paper texture; ink automatically adapts to light or dark paper.
+- **Photographs and ephemera.** Insert from a file, the clipboard or drag-and-drop; crop, tape, photo corners, stickers, bookmarks, frames and highlight strips.
+- **Bookmarks on top.** Tabs with icons and colours (Cream, Ocean, Sage, Rust, Plum, Gold, Charcoal, Rose), reorderable by dragging.
+- **Structure.** A page manager, trash, a contents page and page moves between tabs.
+- **Sound.** A recorded page turn, a real pencil-on-paper loop, quiet typing and per-category volumes. Every sound can be replaced with your own file.
+- **Themes and typography.** Classic Journal, Old Manuscript, Clean Paper, Dark Journal and Field Research; handwritten Caveat and Neucha plus system fonts for headings and body text.
+- **Sizes.** A virtual page format (A5-like by default) and an on-screen notebook size from 50% to 100% of the workspace.
+- **Flexible storage.** Separate settings for the notebook folder, the attachments folder (photos, pasted images, sounds) and the exports folder — inside the notebook or anywhere in the vault.
+- **Export.** Page to PNG, page to Markdown and Markdown import split across pages.
+- **Focus mode.** The notebook takes over the window without Obsidian panels; leave with `Esc`.
+
+## Screenshots
+
+| Drawing tools | Colours, materials and the inspector |
 | :---: | :---: |
-| ![Палитра и перо](docs/images/tools.webp) | ![Инспектор декораций](docs/images/inspector.webp) |
+| ![Palette and pen](docs/images/tools.webp) | ![Decoration inspector](docs/images/inspector.webp) |
 
-| Тёмная бумага | Настройки блокнота |
+| Dark paper | Notebook settings |
 | :---: | :---: |
-| ![Тёмная тема](docs/images/dark.webp) | ![Настройки](docs/images/settings.webp) |
+| ![Dark theme](docs/images/dark.webp) | ![Settings](docs/images/settings.webp) |
 
-![Перелистывание страницы](docs/images/flip.webp)
+![Page turn](docs/images/flip.webp)
 
-## Установка
+## Installation
 
-Нужен Obsidian 1.5.0 или новее, десктопная версия.
+Requires Obsidian 1.5.0 or newer, desktop only.
 
-1. Склонируйте репозиторий в папку плагинов хранилища:
+**From the community directory (recommended).** Open **Settings → Community plugins → Browse**, search for **Fieldbook**, then **Install** and **Enable**.
 
-   ```bash
-   git clone https://github.com/ZekiTRR/FieldBook.git <vault>/.obsidian/plugins/fieldbook
-   ```
+**Manually.** Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/ZekiTRR/FieldBook/releases/latest) into `<vault>/.obsidian/plugins/fieldbook/`, then enable the plugin under **Settings → Community plugins**.
 
-2. Включите плагин: **Settings → Community plugins → Fieldbook**.
-3. Откройте блокнот командой `Fieldbook: Open notebook` или через ленту слева.
+Open the notebook with the `Fieldbook: Open notebook` command or the ribbon icon.
 
-Можно и вручную: скачать `main.js`, `manifest.json` и `styles.css` из [последнего релиза](https://github.com/ZekiTRR/FieldBook/releases/latest) и положить их в `<vault>/.obsidian/plugins/fieldbook/`.
+## Usage
 
-В репозитории уже лежат собранные `main.js` и `styles.css`, поэтому для установки ничего собирать не нужно.
+- `V` selects, `T` creates text, `P` draws, `E` erases and `I` inserts a photo. Shortcuts follow the physical key, so they work on Russian, French or any other layout. Tools live on the left rail; the palette and brush settings live in the right-hand dock.
+- Double-click a page to start a text block. Drag photographs onto a page or paste them from the clipboard.
+- The brush dock carries two switches: "Pen pressure" and "Straighten shapes". Both are remembered per pen, pencil, marker and highlighter.
+- Right-click or double-click a top tab for rename, **Tab colour**, icon and new page. Tab colours apply instantly.
+- The gear button opens notebook settings: theme, fonts, paper, size, sound and turn speed.
+- `Ctrl/Cmd+Z` and `Ctrl/Cmd+Shift+Z` undo and redo. History lives for the lifetime of the Obsidian tab.
 
-## Как пользоваться
+## Settings
 
-- `V` — выбор, `T` — текст, `P` — рисование, `E` — ластик, `I` — вставить фото. Горячие клавиши привязаны к физической клавише, поэтому работают и на русской, и на любой другой раскладке. Инструменты живут на левой ленте, палитра и настройки кисти — в доке справа.
-- Двойной клик по странице создаёт текстовый блок. Фотографии можно перетащить прямо на страницу или вставить из буфера.
-- В доке кисти есть два переключателя: «Pen pressure» и «Straighten shapes». Оба сохраняются отдельно для пера, карандаша, маркера и выделителя.
-- Правый клик или двойной клик по закладке сверху открывает меню: переименование, **Tab colour**, иконка, добавление страницы. Цвета закладок применяются сразу.
-- Кнопка с шестернёй открывает настройки блокнота: тема, шрифты, бумага, размер, звук, скорость перелистывания.
-- `Ctrl/Cmd+Z` и `Ctrl/Cmd+Shift+Z` — отмена и повтор. История хранится в памяти вкладки Obsidian.
+- **Notebook.** Theme, heading and body fonts, paper texture.
+- **Book.** Page-turn animation and speed, on-screen notebook size, page numbers, snap to grid, virtual page size, autosave delay.
+- **Files.** The notebook folder, the attachments folder (photographs, pasted images, imported sounds) and the exports folder. A value without a leading `/` is relative to the notebook folder (`Media` → `Fieldbook/Media`); a leading `/` addresses the vault root (`/98 - Cache/Fieldbook`).
+- **Sound.** Global sound, volume, keyboard writing sound, page-turn recording and per-category volumes: Page turns, Tabs, Pen & pencil, Photos & tape, Interface.
+- **Page.** Background for new pages (plain, ruled, grid, dots), contents, size.
+- **Tabs.** Colour and icon for every bookmark.
 
-## Настройки
+## Privacy and files
 
-- **Notebook.** Тема, шрифты заголовков и текста, текстура бумаги.
-- **Book.** Анимация и скорость перелистывания, размер блокнота на экране, номера страниц, привязка к сетке, формат страницы, задержка автосохранения.
-- **Files.** Папка самого блокнота, папка для вложений (фотографии, вставленные изображения, импортированные звуки) и папка экспорта. Значение без ведущего `/` считается относительно папки блокнота (`Media` → `Fieldbook/Media`), значение с `/` — от корня хранилища (`/98 - Cache/Fieldbook`).
-- **Sound.** Общий звук, громкость, клавиатурный звук, запись перелистывания и отдельные категории: Page turns, Tabs, Pen & pencil, Photos & tape, Interface.
-- **Page.** Фон новой страницы (plain, ruled, grid, dots), оглавление, размер.
-- **Tabs.** Цвет и иконка каждой закладки.
+These are the disclosures for the [Obsidian developer policies](https://docs.obsidian.md/Developer+policies):
 
-## Данные на диске
+- **No network use.** The plugin never contacts a remote service. It has no backend, no update checks, no analytics and no telemetry. Bundled fonts, sounds and images ship inside the plugin folder.
+- **No account and no payment.** Every feature is free.
+- **Files written, all inside your vault:** the notebook folder (default `Fieldbook/`) with `journal.json`, `pages/*.json`, `.bak` recovery copies, the attachments folder for photographs and imported sounds, the exports folder for Markdown and PNG output, and `data.json` in the plugin folder for plugin settings. All locations are configurable under **Settings → Fieldbook → Files**.
+- **Files read:** only the vault files you explicitly choose — a custom paper texture, a replacement page-turn or writing sound, and photographs you insert, paste or drag onto a page.
+- **Desktop only.** Fieldbook relies on continuous pointer capture, pressure data and low-latency Web Audio, so `isDesktopOnly` is `true` and the plugin is not offered on mobile.
+- **Not affiliated with Obsidian.** Fieldbook is an independent community plugin built on the public Obsidian API.
 
-По умолчанию блокнот хранится в папке `Fieldbook/` вашего хранилища:
+## Data on disk
+
+By default the notebook lives in a `Fieldbook/` folder in your vault:
 
 ```text
 Fieldbook/
-├── journal.json      # вкладки, порядок страниц, настройки
-├── pages/            # по одному JSON на страницу
-├── attachments/      # фотографии и импортированные звуки
-└── exports/          # Markdown и PNG
+├── journal.json      # tabs, page order, settings
+├── pages/            # one JSON file per page
+├── attachments/      # photographs and imported sounds
+└── exports/          # Markdown and PNG exports
 ```
 
-Каждое сохранение оставляет рядом `.bak`-копию; если JSON не читается, Fieldbook восстанавливает его из резервной копии. В настройках можно выбрать как папку самого блокнота, так и отдельные папки для вложений и экспорта — внутри блокнота или в любом месте хранилища. Уже добавленные фотографии остаются на своих местах.
+Every save keeps a `.bak` copy next to the file; if a JSON file cannot be read, Fieldbook recovers it from the backup. The settings let you move the notebook folder itself, the attachments folder and the exports folder — either inside the notebook or anywhere else in the vault. Photographs that are already in the notebook keep their current paths.
 
-## Разработка
+## Development
 
 ```bash
-npm install
-npm run dev       # watch-сборка
+npm ci
+npm run dev       # watch build
 npm run build     # typecheck + production
 npm run typecheck
 ```
 
-Сборка кладёт `main.js` и `styles.css` в корень плагина. Локальные `data.json`, `node_modules` и карты исходников в репозиторий не попадают.
+The build writes `main.js` and `styles.css` to the plugin root. Local `data.json`, `node_modules` and source maps are not committed.
 
-Плагин написан на TypeScript и использует только API Obsidian, Canvas 2D и Web Audio. Никакого бэкенда и сетевых запросов во время работы.
+Pushing a semver tag such as `1.0.1` runs the [release workflow](.github/workflows/release.yml), which builds the plugin and opens a draft GitHub release with `main.js`, `manifest.json` and `styles.css` attached. Tags must match the `version` in `manifest.json`, because Obsidian installs the release with that exact tag.
 
-## Благодарности
+The plugin is written in TypeScript and uses only the Obsidian API, Canvas 2D and Web Audio.
 
-- Звук карандаша: [Pencil #1](https://bigsoundbank.com/pencil-s0221.html) by Joseph SARDIN, BigSoundBank, CC0.
-- Шрифты: [Caveat](https://fonts.google.com/specimen/Caveat) и [Neucha](https://fonts.google.com/specimen/Neucha), SIL Open Font License 1.1. Тексты лицензий лежат в `assets/fonts/`.
-- Сделано на [Obsidian API](https://docs.obsidian.md/). Проект не связан с Obsidian.
+## Credits
 
-## Лицензия
+- Pencil sound: [Pencil #1](https://bigsoundbank.com/pencil-s0221.html) by Joseph SARDIN, BigSoundBank, CC0.
+- Page-turn sound: recorded and released by the plugin author.
+- Fonts: [Caveat](https://fonts.google.com/specimen/Caveat) and [Neucha](https://fonts.google.com/specimen/Neucha), SIL Open Font License 1.1. Licence texts are in `assets/fonts/`.
+- Built on the [Obsidian API](https://docs.obsidian.md/). Not affiliated with Obsidian.
 
-MIT. См. [LICENSE](LICENSE).
+## License
+
+MIT. See [LICENSE](LICENSE).
