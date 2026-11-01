@@ -9,12 +9,15 @@ import type {
 } from "../types";
 import {
   VOICE_BAR_STEP,
+  VOICE_HEIGHT,
   VOICE_MIN_WIDTH,
+  VOICE_WAVE_HEIGHT,
   formatVoiceDuration,
   formatVoiceStamp,
   voiceBarCount,
   voiceBars,
   voiceParts,
+  voiceScale,
 } from "./VoiceWave";
 
 export const PALETTE: Record<string, string> = {
@@ -356,15 +359,17 @@ export function paintVoiceBars(
   peaks: number[],
   seed: number,
   elementWidth: number,
+  elementHeight: number,
   played: number,
 ): void {
   const width = Math.max(VOICE_MIN_WIDTH, elementWidth);
-  const { wave } = voiceParts(width);
-  const count = voiceBarCount(wave.w);
+  const k = voiceScale(elementHeight);
+  const { wave } = voiceParts(width, elementHeight);
+  const count = voiceBarCount(wave.w, k);
   svg.replaceChildren();
-  svg.setAttribute("viewBox", `0 0 ${count * VOICE_BAR_STEP} 40`);
+  svg.setAttribute("viewBox", `0 0 ${count * VOICE_BAR_STEP * k} ${VOICE_WAVE_HEIGHT * k}`);
   svg.setAttribute("preserveAspectRatio", "none");
-  const bars = voiceBars(peaks, seed, width);
+  const bars = voiceBars(peaks, seed, width, elementHeight);
   for (let i = 0; i < bars.length; i++) {
     const bar = bars[i];
     const pair = document.createElementNS(SVG_NS, "g");
@@ -375,7 +380,7 @@ export function paintVoiceBars(
     bleed.setAttribute("x2", String(bar.x));
     bleed.setAttribute("y2", String(bar.bottom));
     bleed.setAttribute("stroke", "currentColor");
-    bleed.setAttribute("stroke-width", "3.4");
+    bleed.setAttribute("stroke-width", String(3.4 * k));
     bleed.setAttribute("stroke-linecap", "round");
     bleed.setAttribute("vector-effect", "non-scaling-stroke");
     bleed.setAttribute("opacity", "0.16");
@@ -385,7 +390,7 @@ export function paintVoiceBars(
     main.setAttribute("x2", String(bar.x - bar.tilt));
     main.setAttribute("y2", String(bar.bottom));
     main.setAttribute("stroke", "currentColor");
-    main.setAttribute("stroke-width", "2.2");
+    main.setAttribute("stroke-width", String(2.2 * k));
     main.setAttribute("stroke-linecap", "round");
     main.setAttribute("vector-effect", "non-scaling-stroke");
     pair.append(bleed, main);
@@ -438,6 +443,7 @@ export function renderAudio(
   slip.dataset.mount = el.mount;
   slip.style.setProperty("--voice-ink", colorValue(el.color));
   slip.style.setProperty("--voice-tape", colorValue("cream"));
+  slip.style.setProperty("--voice-k", String(voiceScale(el.h)));
 
   const recording = !el.attachment;
   if (recording) slip.classList.add("is-recording");
@@ -458,7 +464,7 @@ export function renderAudio(
     }
   }
 
-  const parts = voiceParts(el.w);
+  const parts = voiceParts(el.w, el.h);
 
   if (recording) {
     const dot = voiceElement("fb-voice__rec");
@@ -480,7 +486,7 @@ export function renderAudio(
   wave.style.right = `${Math.max(1, el.w - (parts.wave.x + parts.wave.w))}px`;
   wave.style.top = `${parts.wave.y}px`;
   wave.style.height = `${parts.wave.h}px`;
-  paintVoiceBars(wave as SVGSVGElement, el.peaks, el.seed, el.w, recording ? 1 : 0);
+  paintVoiceBars(wave as SVGSVGElement, el.peaks, el.seed, el.w, el.h, recording ? 1 : 0);
   slip.appendChild(wave);
 
   const head = voiceElement("fb-voice__head");
@@ -512,7 +518,10 @@ export function applyVoiceProgress(node: HTMLElement, ratio: number, playing: bo
   const slip = node.querySelector<HTMLElement>(".fb-voice");
   if (!slip) return;
   slip.classList.toggle("is-playing", playing);
-  const parts = voiceParts(parseFloat(node.style.width) || VOICE_DEFAULT_WIDTH);
+  const parts = voiceParts(
+    parseFloat(node.style.width) || VOICE_DEFAULT_WIDTH,
+    parseFloat(node.style.height) || VOICE_HEIGHT,
+  );
   const pairs = slip.querySelectorAll<SVGGElement>(".fb-voice__pair");
   pairs.forEach((pair, index) => {
     pair.classList.toggle("is-played", index < ratio * pairs.length);
@@ -529,7 +538,16 @@ export function applyVoiceLevels(node: HTMLElement, peaks: number[], seconds: nu
   if (!slip) return;
   const wave = slip.querySelector<SVGSVGElement>(".fb-voice__wave");
   const dur = slip.querySelector<HTMLElement>(".fb-voice__dur");
-  if (wave) paintVoiceBars(wave, peaks, 7, parseFloat(node.style.width) || VOICE_DEFAULT_WIDTH, 1);
+  if (wave) {
+    paintVoiceBars(
+      wave,
+      peaks,
+      7,
+      parseFloat(node.style.width) || VOICE_DEFAULT_WIDTH,
+      parseFloat(node.style.height) || VOICE_HEIGHT,
+      1,
+    );
+  }
   if (dur) dur.textContent = formatVoiceDuration(seconds);
 }
 

@@ -8,6 +8,8 @@ import type { AudioElement } from "../types";
 export const VOICE_HEIGHT = 68;
 export const VOICE_MIN_WIDTH = 250;
 export const VOICE_MAX_WIDTH = 900;
+export const VOICE_MIN_SCALE = 1;
+export const VOICE_MAX_SCALE = 3;
 export const VOICE_PAD_X = 13;
 export const VOICE_PLAY_SIZE = 42;
 export const VOICE_GAP = 12;
@@ -29,28 +31,39 @@ export interface VoiceBar {
   tilt: number;
 }
 
+/** Everything inside the strip is authored at 68px tall and multiplied by this. */
+export function voiceScale(height: number): number {
+  return Math.max(0.5, Math.min(4, height / VOICE_HEIGHT));
+}
+
 export function voiceParts(width: number, height = VOICE_HEIGHT): { play: Rect; wave: Rect } {
-  const playX = VOICE_PAD_X;
-  const playY = (height - VOICE_PLAY_SIZE) / 2;
-  const waveX = playX + VOICE_PLAY_SIZE + VOICE_GAP;
-  const waveW = Math.max(48, width - waveX - VOICE_META_WIDTH - VOICE_PAD_X);
+  const k = voiceScale(height);
+  const padX = VOICE_PAD_X * k;
+  const playSize = VOICE_PLAY_SIZE * k;
+  const waveHeight = VOICE_WAVE_HEIGHT * k;
+  const playX = padX;
+  const playY = (height - playSize) / 2;
+  const waveX = playX + playSize + VOICE_GAP * k;
+  const waveW = Math.max(playSize, width - waveX - VOICE_META_WIDTH * k - padX);
   return {
-    play: { x: playX, y: playY, w: VOICE_PLAY_SIZE, h: VOICE_PLAY_SIZE },
-    wave: { x: waveX, y: (height - VOICE_WAVE_HEIGHT) / 2, w: waveW, h: VOICE_WAVE_HEIGHT },
+    play: { x: playX, y: playY, w: playSize, h: playSize },
+    wave: { x: waveX, y: (height - waveHeight) / 2, w: waveW, h: waveHeight },
   };
 }
 
-export function voiceBarCount(waveWidth: number): number {
-  return Math.max(10, Math.min(140, Math.round(waveWidth / VOICE_BAR_STEP)));
+export function voiceBarCount(waveWidth: number, scale = 1): number {
+  const step = VOICE_BAR_STEP * scale;
+  return Math.max(10, Math.min(140, Math.round(waveWidth / step)));
 }
 
 /**
  * Peaks are stored normalised to 0..1. The per-bar tilt and offset come from the
  * element seed, so a stroke looks identical on screen, after a reload and in export.
  */
-export function voiceBars(peaks: number[], seed: number, width: number): VoiceBar[] {
-  const { wave } = voiceParts(width);
-  const count = voiceBarCount(wave.w);
+export function voiceBars(peaks: number[], seed: number, width: number, height = VOICE_HEIGHT): VoiceBar[] {
+  const { wave } = voiceParts(width, height);
+  const k = voiceScale(height);
+  const count = voiceBarCount(wave.w, k);
   const source = peaks.length ? peaks : [0.2];
   const mid = wave.h / 2;
   const bars: VoiceBar[] = [];
@@ -62,12 +75,12 @@ export function voiceBars(peaks: number[], seed: number, width: number): VoiceBa
     const raw = source[low] * (1 - mix) + source[high] * mix;
     const amp = Math.max(0.06, Math.min(1, raw));
     const noise = pseudo(seed, i);
-    const len = Math.max(3, amp * (wave.h - 6));
+    const len = Math.max(3 * k, amp * (wave.h - 6 * k));
     bars.push({
-      x: i * VOICE_BAR_STEP + 3 + (noise(0) - 0.5) * 0.8,
+      x: i * VOICE_BAR_STEP * k + 3 * k + (noise(0) - 0.5) * 0.8 * k,
       top: mid - len / 2,
       bottom: mid + len / 2,
-      tilt: (noise(1) - 0.5) * 1.2,
+      tilt: (noise(1) - 0.5) * 1.2 * k,
     });
   }
   return bars;

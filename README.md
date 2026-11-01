@@ -23,7 +23,7 @@ Everything stays inside your vault. No cloud, no account, no payment and no netw
 - **Shape assist.** A "Straighten shapes" switch per tool in the dock: a shaky line becomes straight, a scribbled circle becomes an ellipse and a rough box becomes a rectangle. It is deliberately conservative — intentional curves stay untouched — and it turns off with one click.
 - **Real paper.** Grain, lighting, a curved gutter and ruled, grid or dot layouts. Any image in your vault can become the paper texture; ink automatically adapts to light or dark paper.
 - **Photographs and ephemera.** Insert from a file, the clipboard or drag-and-drop; crop, tape, photo corners, stickers, bookmarks, frames and highlight strips.
-- **Dictaphone.** Press `R`, click where the note should live, and speak. The take becomes a strip of paper with a hand-drawn play ring, an ink waveform built from the real peaks and a handwritten duration. Tap the ring to play, tap the wave to jump, and choose tape, photo corners or bare paper in the inspector.
+- **Dictaphone.** Press `R`, click where the note should live, and speak. The take becomes a strip of paper with a hand-drawn play ring, an ink waveform built from the real peaks and a handwritten duration. Tap the ring to play, tap the wave to jump, and choose tape, photo corners or bare paper in the inspector. Drag a corner to scale the whole strip up to three times its size — ring, bars, tape and handwriting grow together — or drag a side edge to widen only the waveform.
 - **Bookmarks on top.** Tabs with icons and colours (Cream, Ocean, Sage, Rust, Plum, Gold, Charcoal, Rose), reorderable by dragging.
 - **Structure.** A page manager, trash, a contents page and page moves between tabs.
 - **Sound.** A recorded page turn, a real pencil-on-paper loop, quiet typing and per-category volumes. Every sound can be replaced with your own file.
@@ -59,7 +59,7 @@ Open the notebook with the `Fieldbook: Open notebook` command or the ribbon icon
 
 - `V` selects, `T` creates text, `P` draws, `E` erases, `I` inserts a photo and `R` arms the dictaphone. Shortcuts follow the physical key, so they work on Russian, French or any other layout. Tools live on the left rail; the palette and brush settings live in the right-hand dock.
 - With the dictaphone armed, one click on the page starts the take: the strip grows live bars and a running counter while the microphone is open. Tap the red dot or use the dock to keep it, `Esc` discards the take, and recording stops at five minutes.
-- A selected voice note answers to `Space` for play and pause. Tapping the ink wave jumps to that moment; dragging the side handles only changes the width, so the strip never loses its proportion.
+- A selected voice note answers to `Space` for play and pause. Tapping the ink wave jumps to that moment; corner handles scale the strip proportionally, side handles only widen the wave, and the **Size** slider in the inspector sets the scale from 100% to 300%.
 - Double-click a page to start a text block. Drag photographs onto a page or paste them from the clipboard.
 - The brush dock carries two switches: "Pen pressure" and "Straighten shapes". Both are remembered per pen, pencil, marker and highlighter.
 - Right-click or double-click a top tab for rename, **Tab colour**, icon and new page. Tab colours apply instantly.

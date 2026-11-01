@@ -13,7 +13,7 @@ import type { JournalManager } from "../core/JournalManager";
 import type { StorageManager } from "../storage/StorageManager";
 import { THEME_MAP, type ThemeDefinition } from "../themes";
 import { PALETTE } from "../elements/Renderer";
-import { formatVoiceDuration, formatVoiceStamp, voiceBars, voiceParts } from "../elements/VoiceWave";
+import { formatVoiceDuration, formatVoiceStamp, voiceBars, voiceParts, voiceScale } from "../elements/VoiceWave";
 import { renderDrawingElement } from "../drawing/BrushRenderer";
 import { centerOf } from "../utils";
 
@@ -605,32 +605,33 @@ function drawVoice(ctx: CanvasRenderingContext2D, el: AudioElement, palette: Sna
   ctx.rotate((el.rotation * Math.PI) / 180);
   ctx.translate(-el.w / 2, -el.h / 2);
 
+  const k = voiceScale(el.h);
   const parts = voiceParts(el.w, el.h);
   const ink = resolveColor(el.color, palette);
 
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.26)";
-  ctx.shadowBlur = 8;
-  ctx.shadowOffsetY = 3;
-  ctx.fillStyle = palette.dark ? "rgba(52,48,42,0.95)" : "rgba(241,232,209,0.9)";
-  roundRect(ctx, 0, 0, el.w, el.h, 3);
+  ctx.shadowBlur = 8 * k;
+  ctx.shadowOffsetY = 3 * k;
+  ctx.fillStyle = palette.dark ? "rgba(52,48,42,0.98)" : "rgba(241,232,209,0.96)";
+  roundRect(ctx, 0, 0, el.w, el.h, 3 * k);
   ctx.fill();
   ctx.restore();
 
   ctx.strokeStyle = palette.dark ? "#1b1916" : "#c9b78f";
-  ctx.lineWidth = 1;
-  roundRect(ctx, 0.5, 0.5, el.w - 1, el.h - 1, 3);
+  ctx.lineWidth = Math.max(1, k);
+  roundRect(ctx, 0.5, 0.5, el.w - 1, el.h - 1, 3 * k);
   ctx.stroke();
 
   if (el.mount === "tape") {
     ctx.save();
-    ctx.translate(-12 + 46, -13 + 13.5);
+    ctx.translate((-12 + 46) * k, (-13 + 13.5) * k);
     ctx.rotate((-7 * Math.PI) / 180);
     ctx.fillStyle = palette.dark ? "rgba(216,174,111,0.28)" : "rgba(221,210,182,0.6)";
-    ctx.fillRect(-46, -13.5, 92, 27);
+    ctx.fillRect(-46 * k, -13.5 * k, 92 * k, 27 * k);
     ctx.restore();
   } else if (el.mount === "corners") {
-    const size = 26;
+    const size = 26 * k;
     ctx.fillStyle = palette.dark ? "rgba(216,174,111,0.24)" : "rgba(210,196,160,0.75)";
     const fold = (points: [number, number][]) => {
       ctx.beginPath();
@@ -644,20 +645,20 @@ function drawVoice(ctx: CanvasRenderingContext2D, el: AudioElement, palette: Sna
     fold([[el.w, el.h], [el.w - size, el.h], [el.w, el.h - size]]);
   }
 
-  const bars = voiceBars(el.peaks, el.seed, el.w);
+  const bars = voiceBars(el.peaks, el.seed, el.w, el.h);
   ctx.lineCap = "round";
   ctx.strokeStyle = ink;
   for (const bar of bars) {
     const top = parts.wave.y + bar.top;
     const bottom = parts.wave.y + bar.bottom;
     ctx.globalAlpha = 0.16;
-    ctx.lineWidth = 3.4;
+    ctx.lineWidth = 3.4 * k;
     ctx.beginPath();
     ctx.moveTo(bar.x + bar.tilt, top);
     ctx.lineTo(bar.x, bottom);
     ctx.stroke();
     ctx.globalAlpha = 1;
-    ctx.lineWidth = 2.2;
+    ctx.lineWidth = 2.2 * k;
     ctx.beginPath();
     ctx.moveTo(bar.x, top);
     ctx.lineTo(bar.x - bar.tilt, bottom);
@@ -668,22 +669,22 @@ function drawVoice(ctx: CanvasRenderingContext2D, el: AudioElement, palette: Sna
   const cx = parts.play.x + parts.play.w / 2;
   const cy = parts.play.y + parts.play.h / 2;
   ctx.strokeStyle = ink;
-  ctx.lineWidth = 2.1;
+  ctx.lineWidth = 2.1 * k;
   ctx.beginPath();
-  ctx.arc(cx, cy, 17.6, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 17.6 * k, 0, Math.PI * 2);
   ctx.stroke();
   ctx.globalAlpha = 0.3;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = k;
   ctx.beginPath();
-  ctx.arc(cx, cy, 19.4, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 19.4 * k, 0, Math.PI * 2);
   ctx.stroke();
   ctx.globalAlpha = 1;
   ctx.lineJoin = "round";
-  ctx.lineWidth = 2.4;
+  ctx.lineWidth = 2.4 * k;
   ctx.beginPath();
-  ctx.moveTo(cx - 4.2, cy - 6.8);
-  ctx.lineTo(cx + 6.4, cy);
-  ctx.lineTo(cx - 4.2, cy + 6.8);
+  ctx.moveTo(cx - 4.2 * k, cy - 6.8 * k);
+  ctx.lineTo(cx + 6.4 * k, cy);
+  ctx.lineTo(cx - 4.2 * k, cy + 6.8 * k);
   ctx.closePath();
   ctx.stroke();
 
@@ -691,12 +692,12 @@ function drawVoice(ctx: CanvasRenderingContext2D, el: AudioElement, palette: Sna
   ctx.textAlign = "right";
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = ink;
-  ctx.font = `500 22px ${palette.titleFont}`;
-  ctx.fillText(formatVoiceDuration(el.duration), el.w - 13, cy - 1);
+  ctx.font = `500 ${22 * k}px ${palette.titleFont}`;
+  ctx.fillText(formatVoiceDuration(el.duration), el.w - 13 * k, cy - k);
   if (caption) {
     ctx.fillStyle = palette.inkSoft;
-    ctx.font = `400 11.5px ${palette.bodyFont}`;
-    ctx.fillText(caption, el.w - 13, cy + 15);
+    ctx.font = `400 ${11.5 * k}px ${palette.bodyFont}`;
+    ctx.fillText(caption, el.w - 13 * k, cy + 15 * k);
   }
 }
 

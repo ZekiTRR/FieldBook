@@ -24,7 +24,7 @@ import {
   type TrashedPage,
 } from "../types";
 import { uid, nowIso } from "../utils";
-import { VOICE_HEIGHT, VOICE_MAX_WIDTH, VOICE_MIN_WIDTH } from "../elements/VoiceWave";
+import { VOICE_HEIGHT, VOICE_MAX_SCALE, VOICE_MAX_WIDTH, VOICE_MIN_WIDTH } from "../elements/VoiceWave";
 
 const LAYER_IDS: LayerId[] = ["background", "content", "drawings", "decorations"];
 const TAB_COLORS: TabColor[] = ["cream", "ocean", "sage", "rust", "plum", "gold", "charcoal", "rose"];
@@ -197,7 +197,7 @@ function normalizeElement(raw: unknown): PageElement | null {
   if (type === "audio") {
     const base = normalizeBase(raw, "audio");
     base.w = num(base.w, 344, VOICE_MIN_WIDTH, VOICE_MAX_WIDTH);
-    base.h = VOICE_HEIGHT;
+    base.h = num(base.h, VOICE_HEIGHT, VOICE_HEIGHT, VOICE_HEIGHT * VOICE_MAX_SCALE);
     const rawPeaks = Array.isArray(raw.peaks) ? raw.peaks : [];
     const peaks = rawPeaks
       .filter((value): value is number => typeof value === "number" && Number.isFinite(value))

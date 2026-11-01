@@ -38,7 +38,14 @@ import {
   applyVoiceProgress,
   createElementNode,
 } from "../elements/Renderer";
-import { VOICE_HEIGHT, VOICE_MAX_WIDTH, VOICE_MIN_WIDTH, voiceParts } from "../elements/VoiceWave";
+import {
+  VOICE_HEIGHT,
+  VOICE_MAX_SCALE,
+  VOICE_MAX_WIDTH,
+  VOICE_MIN_SCALE,
+  VOICE_MIN_WIDTH,
+  voiceParts,
+} from "../elements/VoiceWave";
 import {
   centerOf,
   clamp,
@@ -739,11 +746,8 @@ export class PageView {
           ]
         : [];
       if (single.type === "audio" && canTransform) {
-        // The strip keeps its height, so only the horizontal edges and the rotate knob are useful.
-        descriptors = descriptors.filter(
-          (descriptor) =>
-            descriptor.kind === "e" || descriptor.kind === "w" || descriptor.kind === "rotate",
-        );
+        // Corners scale the strip like a piece of paper; side edges only change how much wave fits.
+        descriptors = descriptors.filter((descriptor) => descriptor.kind !== "n" && descriptor.kind !== "s");
       }
       if (canTransform) {
         const stem = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -1422,11 +1426,27 @@ export class PageView {
           if (handle.includes("n")) top = bottom - MIN_ELEMENT_SIZE;
           else bottom = top + MIN_ELEMENT_SIZE;
         }
-        const newW = el.type === "audio"
-          ? clamp(right - left, VOICE_MIN_WIDTH, VOICE_MAX_WIDTH)
-          : right - left;
-        const newH = el.type === "audio" ? VOICE_HEIGHT : bottom - top;
-        const newCenterLocal = { x: left + (right - left) / 2, y: top + (bottom - top) / 2 };
+        let newW = right - left;
+        let newH = bottom - top;
+        let newCenterLocal = { x: left + newW / 2, y: top + newH / 2 };
+        if (el.type === "audio") {
+          const baseK = singleBefore.h / VOICE_HEIGHT;
+          const anchorX = handle.includes("w") ? singleBefore.w : 0;
+          const anchorY = handle.includes("n") ? singleBefore.h : 0;
+          const dirX = handle.includes("w") ? -1 : 1;
+          const dirY = handle.includes("n") ? -1 : 1;
+          if (handle.length === 2) {
+            const growth = Math.max(newW / singleBefore.w, newH / singleBefore.h);
+            const widthCap = (VOICE_MAX_WIDTH / singleBefore.w) * baseK;
+            const scale = clamp(baseK * growth, VOICE_MIN_SCALE, Math.min(VOICE_MAX_SCALE, widthCap));
+            newH = VOICE_HEIGHT * scale;
+            newW = (singleBefore.w / singleBefore.h) * newH;
+          } else {
+            newH = singleBefore.h;
+            newW = clamp(newW, VOICE_MIN_WIDTH * baseK, VOICE_MAX_WIDTH);
+          }
+          newCenterLocal = { x: anchorX + (dirX * newW) / 2, y: anchorY + (dirY * newH) / 2 };
+        }
         const centerOffset = rotateVector(
           { x: newCenterLocal.x - singleBefore.w / 2, y: newCenterLocal.y - singleBefore.h / 2 },
           rad,

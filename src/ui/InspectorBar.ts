@@ -12,7 +12,15 @@ import type {
 import { FONT_OPTIONS } from "../types";
 import type { PageView, SelectionInfo } from "../page/PageView";
 import { colorValue } from "../elements/Renderer";
-import { formatVoiceDuration, formatVoiceStamp } from "../elements/VoiceWave";
+import {
+  VOICE_HEIGHT,
+  VOICE_MAX_SCALE,
+  VOICE_MAX_WIDTH,
+  VOICE_MIN_SCALE,
+  VOICE_MIN_WIDTH,
+  formatVoiceDuration,
+  formatVoiceStamp,
+} from "../elements/VoiceWave";
 import { INK_COLORS } from "./Toolbar";
 
 export interface InspectorActions {
@@ -216,6 +224,31 @@ export class InspectorBar {
     }`;
     playGroup.append(play, readout);
     this.el.appendChild(playGroup);
+
+    const sizeGroup = group("Size");
+    const scale = rangeField(
+      "Scale",
+      Math.round((audio.h / VOICE_HEIGHT) * 100),
+      100,
+      300,
+      5,
+      (value, commit) => {
+        if (commit) view.commitLiveEdit("Resize voice note");
+        else {
+          view.beginLiveEdit();
+          view.applyLivePatch((el) => {
+            if (el.type !== "audio") return;
+            const next = clampNumber(value / 100, VOICE_MIN_SCALE, VOICE_MAX_SCALE);
+            const current = el.h / VOICE_HEIGHT;
+            el.h = VOICE_HEIGHT * next;
+            el.w = clampNumber(el.w * (next / current), VOICE_MIN_WIDTH * next, VOICE_MAX_WIDTH);
+          });
+        }
+      },
+      "%",
+    );
+    sizeGroup.appendChild(scale.wrap);
+    this.el.appendChild(sizeGroup);
 
     const captionGroup = group("Caption");
     const input = document.createElement("input");

@@ -353,7 +353,7 @@
 .fb-voice {
   position: absolute;
   inset: 0;
-  border-radius: 3px;
+  border-radius: calc(3px * var(--voice-k, 1));
   color: var(--voice-ink);
   background-color: color-mix(in srgb, var(--fb-paper-3) 96%, transparent);
   box-shadow:
@@ -376,10 +376,10 @@
 
 .fb-voice__tape {
   position: absolute;
-  top: -13px;
-  left: -12px;
-  width: 92px;
-  height: 27px;
+  top: calc(-13px * var(--voice-k, 1));
+  left: calc(-12px * var(--voice-k, 1));
+  width: calc(92px * var(--voice-k, 1));
+  height: calc(27px * var(--voice-k, 1));
   border-radius: 2px;
   transform: rotate(-7deg);
   pointer-events: none;
@@ -416,8 +416,8 @@
 
 .fb-voice__corner {
   position: absolute;
-  width: 26px;
-  height: 26px;
+  width: calc(26px * var(--voice-k, 1));
+  height: calc(26px * var(--voice-k, 1));
   background: color-mix(in srgb, var(--voice-tape) 88%, transparent);
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
   opacity: 0.92;
@@ -450,15 +450,15 @@
 
 .fb-voice__play {
   position: absolute;
-  width: 42px;
-  height: 42px;
+  width: calc(42px * var(--voice-k, 1));
+  height: calc(42px * var(--voice-k, 1));
   display: grid;
   place-items: center;
 }
 
 .fb-voice__ring {
-  width: 42px;
-  height: 42px;
+  width: 100%;
+  height: 100%;
   overflow: visible;
 }
 
@@ -499,7 +499,7 @@
 .fb-voice__head {
   position: absolute;
   width: 0;
-  border-left: 1.6px dashed color-mix(in srgb, var(--fb-accent) 68%, transparent);
+  border-left: calc(1.6px * var(--voice-k, 1)) dashed color-mix(in srgb, var(--fb-accent) 68%, transparent);
   opacity: 0;
   pointer-events: none;
   transition: left 90ms linear, opacity 140ms ease;
@@ -508,17 +508,17 @@
 .fb-voice__head::after {
   content: "";
   position: absolute;
-  top: -5px;
-  left: -3.6px;
-  border-left: 3.6px solid transparent;
-  border-right: 3.6px solid transparent;
-  border-top: 4.6px solid var(--fb-accent);
+  top: calc(-5px * var(--voice-k, 1));
+  left: calc(-3.6px * var(--voice-k, 1));
+  border-left: calc(3.6px * var(--voice-k, 1)) solid transparent;
+  border-right: calc(3.6px * var(--voice-k, 1)) solid transparent;
+  border-top: calc(4.6px * var(--voice-k, 1)) solid var(--fb-accent);
   opacity: 0.8;
 }
 
 .fb-voice__meta {
   position: absolute;
-  right: 13px;
+  right: calc(13px * var(--voice-k, 1));
   top: 0;
   height: 100%;
   display: grid;
@@ -529,7 +529,7 @@
 
 .fb-voice__dur {
   font-family: var(--fb-font-title);
-  font-size: 22px;
+  font-size: calc(22px * var(--voice-k, 1));
   line-height: 1;
   letter-spacing: 0.3px;
   color: var(--voice-ink);
@@ -537,10 +537,10 @@
 
 .fb-voice__cap {
   font-family: var(--fb-font-body);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--voice-k, 1));
   line-height: 1.2;
   color: var(--fb-ink-soft);
-  max-width: 132px;
+  max-width: calc(132px * var(--voice-k, 1));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -548,15 +548,15 @@
 
 .fb-voice__rec {
   position: absolute;
-  width: 42px;
-  height: 42px;
+  width: calc(42px * var(--voice-k, 1));
+  height: calc(42px * var(--voice-k, 1));
   display: grid;
   place-items: center;
 }
 
 .fb-voice__rec-dot {
-  width: 11px;
-  height: 11px;
+  width: calc(11px * var(--voice-k, 1));
+  height: calc(11px * var(--voice-k, 1));
   border-radius: 50%;
   background: var(--fb-accent);
   animation: fb-voice-pulse 1.6s ease-out infinite;
