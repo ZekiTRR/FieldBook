@@ -601,6 +601,12 @@ export class JournalManager {
     this.emit({ type: "settings" });
   }
 
+  updateVoiceSettings(patch: Partial<JournalSettings["voice"]>): void {
+    this.journal.settings.voice = { ...this.journal.settings.voice, ...patch };
+    this.markJournalDirty();
+    this.emit({ type: "settings" });
+  }
+
   markPageDirty(id: string, schedule = true): void {
     const meta = this.journal.pages[id];
     if (meta) meta.updatedAt = nowIso();

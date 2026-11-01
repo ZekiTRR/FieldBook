@@ -26,6 +26,17 @@ export class AudioManager {
   private writingBufferPath = "";
   private writingBufferLoading: Promise<void> | null = null;
   private writingBufferFailedAt = 0;
+  private voiceCache = new Map<string, HTMLAudioElement>();
+  private voice: {
+    id: string;
+    element: HTMLAudioElement;
+    duration: number;
+    onProgress: (ratio: number) => void;
+    onEnd: () => void;
+    timeUpdate: () => void;
+    ended: () => void;
+    paused: boolean;
+  } | null = null;
   private writingVoice: {
     source: AudioBufferSourceNode;
     gain: GainNode;
@@ -59,12 +70,101 @@ export class AudioManager {
     this.settings.soundEnabled = enabled;
     if (!enabled) {
       this.stopWritingVoice(true);
+      this.pauseVoiceNote();
       this.context?.suspend();
       for (const audio of this.customCache.values()) audio.pause();
       for (const audio of this.defaultCache.values()) audio.pause();
     } else {
       this.unlock();
     }
+  }
+
+  // ------------------------------------------------------------------ voice notes
+
+  voiceNoteId(): string | null {
+    return this.voice?.id ?? null;
+  }
+
+  voicePaused(): boolean {
+    return this.voice?.paused ?? false;
+  }
+
+  /**
+   * Plays a recording attached to a page. Deliberate playback ignores the notebook
+   * sound switch — only the master volume gates it — so muting interface clicks never
+   * silences a note the user just asked to hear.
+   */
+  playVoiceNote(
+    id: string,
+    path: string,
+    duration: number,
+    fromSeconds: number,
+    onProgress: (ratio: number) => void,
+    onEnd: () => void,
+  ): boolean {
+    this.stopVoiceNote();
+    const element = this.elementFor(path, this.voiceCache);
+    if (!element) return false;
+    const timeUpdate = () => {
+      const total =
+        element.duration && Number.isFinite(element.duration) && element.duration > 0
+          ? element.duration
+          : duration;
+      onProgress(Math.max(0, Math.min(1, element.currentTime / Math.max(0.2, total))));
+    };
+    const ended = () => {
+      onProgress(1);
+      this.detachVoice();
+      onEnd();
+    };
+    element.volume = Math.max(0, Math.min(1, this.settings.masterVolume));
+    element.addEventListener("timeupdate", timeUpdate);
+    element.addEventListener("ended", ended);
+    this.voice = { id, element, duration, onProgress, onEnd, timeUpdate, ended, paused: false };
+    element.currentTime = Math.max(0, Math.min(fromSeconds, duration));
+    void element.play().catch(() => {
+      this.detachVoice();
+      onProgress(0);
+    });
+    return true;
+  }
+
+  resumeVoiceNote(): boolean {
+    const voice = this.voice;
+    if (!voice || !voice.paused) return false;
+    voice.paused = false;
+    void voice.element.play().catch(() => this.stopVoiceNote());
+    return true;
+  }
+
+  pauseVoiceNote(): void {
+    if (!this.voice || this.voice.paused) return;
+    this.voice.paused = true;
+    this.voice.element.pause();
+  }
+
+  stopVoiceNote(): void {
+    if (!this.voice) return;
+    const element = this.voice.element;
+    this.detachVoice();
+    element.pause();
+    element.currentTime = 0;
+  }
+
+  /** Jumps the active note, or parks the playhead when nothing plays. */
+  seekVoiceNote(seconds: number): void {
+    const voice = this.voice;
+    if (!voice) return;
+    voice.element.currentTime = Math.max(0, Math.min(seconds, voice.duration));
+    voice.onProgress(voice.element.currentTime / Math.max(0.2, voice.duration));
+  }
+
+  private detachVoice(): void {
+    const voice = this.voice;
+    if (!voice) return;
+    this.voice = null;
+    voice.element.removeEventListener("timeupdate", voice.timeUpdate);
+    voice.element.removeEventListener("ended", voice.ended);
   }
 
   private ensureContext(): AudioContext | null {
@@ -523,6 +623,7 @@ export class AudioManager {
 
   dispose(): void {
     this.stopWritingVoice(true);
+    this.stopVoiceNote();
     this.writingBuffer = null;
     this.writingBufferLoading = null;
     if (this.context) {
@@ -531,5 +632,6 @@ export class AudioManager {
     }
     this.customCache.clear();
     this.defaultCache.clear();
+    this.voiceCache.clear();
   }
 }

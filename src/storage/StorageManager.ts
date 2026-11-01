@@ -81,6 +81,20 @@ export class StorageManager {
     return normalizePath([this.exportsDir, ...parts].filter(Boolean).join("/"));
   }
 
+  /** Voice recordings live in their own subfolder so the attachments stay browsable. */
+  async uniqueVoicePath(base: string, extension: string): Promise<string> {
+    const safeBase = base.replace(/[^\p{L}\p{N}_-]+/gu, "-").replace(/^-+|-+$/g, "") || "voice";
+    const ext = extension.replace(/^\./, "").toLowerCase() || "webm";
+    let candidate = `${safeBase}.${ext}`;
+    let index = 2;
+    while (await this.exists(this.attachmentPath("audio", candidate))) {
+      candidate = `${safeBase}-${index}.${ext}`;
+      index++;
+    }
+    await this.ensureFolder(this.attachmentPath("audio"));
+    return this.attachmentPath("audio", candidate);
+  }
+
   async ensureFolders(): Promise<void> {
     await this.ensureFolder(this.folder);
     await this.ensureFolder(this.path("pages"));

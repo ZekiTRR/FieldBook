@@ -774,3 +774,52 @@
     padding: 7px 11px 10px;
   }
 }
+
+/* ------------------------------------------------------------ dictaphone dock */
+
+.fb-voice__timer {
+  font-family: var(--fb-font-title);
+  font-size: 34px;
+  line-height: 1;
+  color: var(--fb-toolbar-text);
+  letter-spacing: 0.5px;
+  margin: 2px 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fb-voice-meter {
+  height: 10px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px var(--fb-toolbar-border);
+  margin-bottom: 10px;
+}
+
+.fb-voice-meter__fill {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(0.02);
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--fb-accent) 70%, transparent),
+    var(--fb-accent)
+  );
+  transition: transform 70ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fb-voice-meter__fill {
+    transition: none;
+  }
+}
+
+.fb-inspector__readout {
+  font-family: var(--fb-font-body);
+  font-size: 12.5px;
+  color: var(--fb-toolbar-muted);
+  align-self: center;
+  padding-left: 2px;
+}

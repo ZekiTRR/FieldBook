@@ -8,6 +8,7 @@ import {
 } from "obsidian";
 import type {
   ActiveTool,
+  AudioElement,
   BrushKind,
   DecorKind,
   ImageElement,
@@ -20,17 +21,20 @@ import type {
   SoundCategory,
   TabColor,
   TabData,
+  VoiceMount,
 } from "../types";
 import { TAB_COLOR_OPTIONS, VIEW_TYPE } from "../types";
 import type { JournalManager, StoreEvent } from "../core/JournalManager";
 import { UndoRedoManager } from "../core/History";
 import type { AudioManager } from "../audio/AudioManager";
+import { VoiceRecorder, voiceFailureKind } from "../audio/VoiceRecorder";
 import type { StorageManager } from "../storage/StorageManager";
 import { PageView, type PageHost, type ShapeStyle, type ToolState } from "../page/PageView";
 import { applyTheme, type PaperTone } from "../themes";
-import { isTypingTarget, parseWikiLink, physicalKey } from "../utils";
+import { formatVoiceDuration } from "../elements/VoiceWave";
+import { isTypingTarget, parseWikiLink, physicalKey, sanitizeFilename } from "../utils";
 import { saveImageFile } from "../utils/images";
-import { Toolbar, type ToolbarActions } from "../ui/Toolbar";
+import { INK_COLORS, Toolbar, type ToolbarActions, type VoiceDockState } from "../ui/Toolbar";
 import { TabsBar } from "../ui/TabsBar";
 import { InspectorBar } from "../ui/InspectorBar";
 import { openLayersPanel } from "../ui/LayersPanel";
@@ -42,6 +46,10 @@ import { BookSettingsModal } from "../ui/BookSettingsModal";
 import { importMarkdown } from "../export/MarkdownImporter";
 import { exportPageToMarkdown } from "../export/MarkdownExporter";
 import { renderPageToCanvas, safeExportName, saveCanvasPng } from "../export/PageSnapshot";
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
+}
 
 export interface FieldbookPluginLike {
   app: import("obsidian").App;
@@ -128,6 +136,11 @@ export class FieldbookView extends ItemView implements PageHost {
   private structureTimer: number | null = null;
   private suppressStructureRender = false;
   private resizeObserver: ResizeObserver | null = null;
+  private recorder = new VoiceRecorder();
+  private voicePlacement: { pageId: string; elementId: string } | null = null;
+  private voiceTicker: number | null = null;
+  private voiceStart = new Map<string, number>();
+  private voiceRatio = new Map<string, number>();
   private measureFrame: number | null = null;
   private unsubscribeStore: (() => void) | null = null;
   private clipboard: PageElement[] = [];
@@ -181,6 +194,8 @@ export class FieldbookView extends ItemView implements PageHost {
       onCopy: () => this.copySelection(),
       onCrop: (image) => this.openCrop(this.activePageOrNull(), image),
       onTape: (image) => this.activePageView?.addTapeToImage(image),
+      onPlayVoice: (audio) => this.toggleVoiceNote(this.pageViewFor(audio.id) ?? this.activePageView, audio, 0),
+      isVoicePlaying: (id) => this.audio.voiceNoteId() === id,
       refresh: () => {
         this.refreshInspector();
         this.toolbar.update();
@@ -239,6 +254,9 @@ export class FieldbookView extends ItemView implements PageHost {
   async onClose(): Promise<void> {
     this.closing = true;
     closeAllPopovers();
+    this.recorder.dispose();
+    this.clearVoicePlacement();
+    this.stopVoicePlayback();
     this.unsubscribeStore?.();
     this.unsubscribeStore = null;
     if (this.structureTimer !== null) window.clearTimeout(this.structureTimer);
@@ -369,6 +387,18 @@ export class FieldbookView extends ItemView implements PageHost {
         this.tool = "decorate";
         this.refreshToolState();
       },
+      getVoice: () => this.store.getSettings().voice,
+      getVoiceDock: (): VoiceDockState => ({
+        recording: this.voicePlacement !== null,
+        seconds: this.recorder.seconds,
+        level: this.recorder.level(),
+      }),
+      onVoicePatch: (patch) => {
+        this.store.updateVoiceSettings(patch);
+        this.toolbar.update();
+      },
+      onVoiceStop: () => this.stopVoicePlacement(),
+      onVoiceCancel: () => this.cancelVoicePlacement(),
       onImageUpload: () => this.pickLocalImages(),
       onImageVault: () => this.pickVaultImage(),
       onUndo: () => void this.undo(),
@@ -665,6 +695,7 @@ export class FieldbookView extends ItemView implements PageHost {
   // ---------------------------------------------------------------------
 
   private async flipTo(targetIndex: number, direction: Direction): Promise<void> {
+    if (this.audio.voiceNoteId()) this.stopVoicePlayback();
     const layout = this.store.getLayout();
     const from = layout[this.currentSpread];
     const to = layout[targetIndex];
@@ -1034,6 +1065,184 @@ export class FieldbookView extends ItemView implements PageHost {
     }
   }
 
+  // ------------------------------------------------------------------
+  // Dictaphone
+  // ------------------------------------------------------------------
+
+  isVoicePlacement(elementId: string): boolean {
+    return this.voicePlacement?.elementId === elementId;
+  }
+
+  beginVoiceNote(page: PageView, point: { x: number; y: number }): void {
+    if (this.voicePlacement || !page.page || !page.pageId) return;
+    const voice = this.store.getSettings().voice;
+    const element = page.createVoicePlaceholder(point, { color: voice.color, mount: voice.mount });
+    if (!element) return;
+    this.tool = "select";
+    this.refreshToolState();
+    this.voicePlacement = { pageId: page.pageId, elementId: element.id };
+    page.markVoicePlacement(element.id);
+    this.audio.unlock();
+    void this.startRecorder(page, element.id);
+  }
+
+  private async startRecorder(page: PageView, elementId: string): Promise<void> {
+    try {
+      await this.recorder.start();
+    } catch (error) {
+      this.clearVoicePlacement();
+      page.cancelVoicePlacement(elementId);
+      this.reportVoiceFailure(voiceFailureKind(error) ?? "failed");
+      return;
+    }
+    this.refreshToolState();
+    this.voiceTicker = window.setInterval(() => {
+      const placement = this.voicePlacement;
+      if (!placement) return;
+      const target = this.pageViewFor(placement.elementId);
+      if (!target) return;
+      target.updateVoiceLevels(placement.elementId, this.recorder.currentPeaks(48), this.recorder.seconds);
+      this.toolbar?.update();
+    }, 90);
+  }
+
+  stopVoicePlacement(): void {
+    const placement = this.voicePlacement;
+    if (!placement) return;
+    const page = this.pageViewFor(placement.elementId);
+    this.clearVoicePlacement();
+    void this.finishVoiceRecording(page, placement.elementId);
+  }
+
+  cancelVoicePlacement(): void {
+    const placement = this.voicePlacement;
+    if (!placement) return;
+    this.recorder.cancel();
+    const page = this.pageViewFor(placement.elementId);
+    this.clearVoicePlacement();
+    page?.cancelVoicePlacement(placement.elementId);
+    this.refreshInspector();
+    this.toast("Take discarded.");
+  }
+
+  private clearVoicePlacement(): void {
+    if (this.voiceTicker !== null) {
+      window.clearInterval(this.voiceTicker);
+      this.voiceTicker = null;
+    }
+    const previous = this.voicePlacement;
+    this.voicePlacement = null;
+    if (previous) this.pageViewFor(previous.elementId)?.markVoicePlacement(null);
+    this.toolbar?.update();
+  }
+
+  private async finishVoiceRecording(page: PageView | null, elementId: string): Promise<void> {
+    if (!page) {
+      this.recorder.cancel();
+      return;
+    }
+    let recording;
+    try {
+      recording = await this.recorder.stop();
+    } catch {
+      page.cancelVoicePlacement(elementId);
+      this.notify("Fieldbook: the take could not be finished.");
+      return;
+    }
+    const duration = recording.durationMs / 1000;
+    const stamp = new Date();
+    const base = `voice-${stamp.getFullYear()}${pad(stamp.getMonth() + 1)}${pad(stamp.getDate())}-${pad(stamp.getHours())}${pad(stamp.getMinutes())}${pad(stamp.getSeconds())}`;
+    try {
+      const path = await this.plugin.storage.uniqueVoicePath(sanitizeFilename(base, "voice"), recording.extension);
+      await this.plugin.storage.writeBinary(path, await recording.blob.arrayBuffer());
+      page.finishVoicePlacement(elementId, { attachment: path, duration, peaks: recording.peaks });
+    } catch (error) {
+      console.error("Fieldbook: voice recording could not be stored", error);
+      page.cancelVoicePlacement(elementId);
+      this.notify("Fieldbook: the recording could not be saved into the vault.");
+      return;
+    }
+    this.refreshInspector();
+    this.toast(`Voice note added \u00b7 ${formatVoiceDuration(duration)}`);
+  }
+
+  private reportVoiceFailure(kind: "unsupported" | "denied" | "failed"): void {
+    const message =
+      kind === "denied"
+        ? "Fieldbook: the microphone was declined. Allow microphone access for Obsidian, then try again."
+        : kind === "unsupported"
+          ? "Fieldbook: this Obsidian build has no microphone recording support."
+          : "Fieldbook: the microphone could not be started.";
+    this.notify(message);
+  }
+
+  toggleVoiceNote(page: PageView | null, element: AudioElement, ratio: number): void {
+    if (!page || !element.attachment) return;
+    const active = this.audio.voiceNoteId();
+    if (active === element.id) {
+      if (this.audio.voicePaused()) {
+        this.audio.resumeVoiceNote();
+        page.applyVoiceProgressTo(element.id, this.voiceRatio.get(element.id) ?? ratio, true);
+      } else {
+        this.audio.pauseVoiceNote();
+        page.applyVoiceProgressTo(element.id, this.voiceRatio.get(element.id) ?? ratio, false);
+      }
+      this.refreshInspector();
+      return;
+    }
+    if (active) this.stopVoicePlayback(active);
+    const from = this.voiceStart.get(element.id) ?? ratio;
+    this.voiceStart.delete(element.id);
+    const started = this.audio.playVoiceNote(
+      element.id,
+      element.attachment,
+      element.duration,
+      from * element.duration,
+      (progress) => {
+        this.voiceRatio.set(element.id, progress);
+        const active = this.audio.voiceNoteId() === element.id && !this.audio.voicePaused();
+        this.pageViewFor(element.id)?.applyVoiceProgressTo(element.id, progress, active);
+      },
+      () => {
+        this.pageViewFor(element.id)?.applyVoiceProgressTo(element.id, 1, false);
+        this.voiceRatio.delete(element.id);
+        this.refreshInspector();
+      },
+    );
+    if (!started) {
+      this.notify("Fieldbook: the recording could not be opened.");
+      return;
+    }
+    this.refreshInspector();
+  }
+
+  seekVoiceNote(page: PageView, element: AudioElement, ratio: number): void {
+    if (this.audio.voiceNoteId() === element.id) {
+      this.audio.seekVoiceNote(ratio * element.duration);
+      this.voiceRatio.set(element.id, ratio);
+      page.applyVoiceProgressTo(element.id, ratio, !this.audio.voicePaused());
+      return;
+    }
+    this.voiceStart.set(element.id, ratio);
+    page.applyVoiceProgressTo(element.id, ratio, false);
+  }
+
+  private stopVoicePlayback(elementId?: string): void {
+    const active = elementId ?? this.audio.voiceNoteId();
+    this.audio.stopVoiceNote();
+    if (!active) return;
+    this.voiceStart.delete(active);
+    this.voiceRatio.delete(active);
+    this.pageViewFor(active)?.applyVoiceProgressTo(active, 0, false);
+  }
+
+  private pageViewFor(elementId: string): PageView | null {
+    for (const page of [this.pageViews.left, this.pageViews.right]) {
+      if (page?.page?.elements.some((element) => element.id === elementId)) return page;
+    }
+    return null;
+  }
+
   private updateCursors(): void {
     const tool = this.tool;
     const brush = this.brush;
@@ -1160,6 +1369,67 @@ export class FieldbookView extends ItemView implements PageHost {
         item.setTitle(element.shadow ? "Remove shadow" : "Add shadow").setIcon("sun").onClick(() => {
           page.updateSelectedImage({ shadow: !element.shadow });
           this.refreshInspector();
+        }),
+      );
+      menu.addSeparator();
+    }
+    if (element.type === "audio") {
+      const playing = this.audio.voiceNoteId() === element.id && !this.audio.voicePaused();
+      menu.addItem((item) =>
+        item
+          .setTitle(playing ? "Stop playback" : this.audio.voiceNoteId() === element.id ? "Resume" : "Play recording")
+          .setIcon(playing ? "square" : "play")
+          .onClick(() => this.toggleVoiceNote(page, element, this.voiceRatio.get(element.id) ?? 0)),
+      );
+      menu.addItem((item) =>
+        item.setTitle("Caption\u2026").setIcon("type").onClick(() => {
+          new PromptModal(this.app, {
+            title: "Voice note caption",
+            value: element.label,
+            onSubmit: (value) => {
+              page.updateSelectedVoice({ label: value.trim() });
+              this.refreshInspector();
+            },
+          }).open();
+        }),
+      );
+      menu.addItem((item) =>
+        item.setTitle("Ink colour").setIcon("palette").onClick(() => {
+          const inkMenu = new Menu();
+          for (const swatch of INK_COLORS) {
+            inkMenu.addItem((sub) =>
+              sub
+                .setTitle(swatch.label)
+                .setChecked(element.color === swatch.color)
+                .onClick(() => {
+                  page.updateSelectedVoice({ color: swatch.color });
+                  this.refreshInspector();
+                }),
+            );
+          }
+          inkMenu.showAtMouseEvent(event);
+        }),
+      );
+      menu.addItem((item) =>
+        item.setTitle("Mount").setIcon("paperclip").onClick(() => {
+          const mountMenu = new Menu();
+          const options: { id: VoiceMount; label: string }[] = [
+            { id: "tape", label: "Taped strip" },
+            { id: "corners", label: "Photo corners" },
+            { id: "none", label: "Bare paper" },
+          ];
+          for (const option of options) {
+            mountMenu.addItem((sub) =>
+              sub
+                .setTitle(option.label)
+                .setChecked(element.mount === option.id)
+                .onClick(() => {
+                  page.updateSelectedVoice({ mount: option.id });
+                  this.refreshInspector();
+                }),
+            );
+          }
+          mountMenu.showAtMouseEvent(event);
         }),
       );
       menu.addSeparator();
@@ -1496,6 +1766,19 @@ export class FieldbookView extends ItemView implements PageHost {
       }
       return;
     }
+    if (key === "Escape" && this.voicePlacement) {
+      event.preventDefault();
+      this.cancelVoicePlacement();
+      return;
+    }
+    if (lower === " " && !mod && !event.shiftKey) {
+      const selected = this.activePageView?.getSelectedElements();
+      if (selected && selected.length === 1 && selected[0].type === "audio") {
+        event.preventDefault();
+        this.toggleVoiceNote(this.activePageView, selected[0], 0);
+        return;
+      }
+    }
     if (key === "PageDown") {
       event.preventDefault();
       this.turnPage(1);
@@ -1523,6 +1806,7 @@ export class FieldbookView extends ItemView implements PageHost {
         p: () => this.setTool("draw"),
         e: () => this.setBrush("eraser"),
         i: () => this.pickLocalImages(),
+        r: () => this.setTool("audio"),
       };
       const action = tools[lower];
       if (action) {

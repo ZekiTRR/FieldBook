@@ -1,11 +1,21 @@
 import { setIcon } from "obsidian";
 import type {
+  AudioElement,
   DecorationElement,
   ImageElement,
   PageElement,
   ShapeElement,
   TextElement,
 } from "../types";
+import {
+  VOICE_BAR_STEP,
+  VOICE_MIN_WIDTH,
+  formatVoiceDuration,
+  formatVoiceStamp,
+  voiceBarCount,
+  voiceBars,
+  voiceParts,
+} from "./VoiceWave";
 
 export const PALETTE: Record<string, string> = {
   cream: "#ddd2b6",
@@ -73,6 +83,8 @@ export function createElementNode(
     node.appendChild(renderShape(el));
   } else if (el.type === "decoration") {
     node.appendChild(renderDecoration(el));
+  } else if (el.type === "audio") {
+    node.appendChild(renderAudio(el, attachmentExists));
   }
   return node;
 }
@@ -327,6 +339,198 @@ export function renderDecoration(el: DecorationElement): HTMLElement {
     }
   }
   return host;
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const VOICE_DEFAULT_WIDTH = 344;
+
+function voiceElement(className: string): HTMLElement {
+  const node = document.createElement("div");
+  node.className = className;
+  return node;
+}
+
+/** Draws the ink bars. The viewBox is fixed to the bar grid so resizing only stretches it. */
+export function paintVoiceBars(
+  svg: SVGSVGElement,
+  peaks: number[],
+  seed: number,
+  elementWidth: number,
+  played: number,
+): void {
+  const width = Math.max(VOICE_MIN_WIDTH, elementWidth);
+  const { wave } = voiceParts(width);
+  const count = voiceBarCount(wave.w);
+  svg.replaceChildren();
+  svg.setAttribute("viewBox", `0 0 ${count * VOICE_BAR_STEP} 40`);
+  svg.setAttribute("preserveAspectRatio", "none");
+  const bars = voiceBars(peaks, seed, width);
+  for (let i = 0; i < bars.length; i++) {
+    const bar = bars[i];
+    const pair = document.createElementNS(SVG_NS, "g");
+    pair.setAttribute("class", i < played * bars.length ? "fb-voice__pair is-played" : "fb-voice__pair");
+    const bleed = document.createElementNS(SVG_NS, "line");
+    bleed.setAttribute("x1", String(bar.x + bar.tilt));
+    bleed.setAttribute("y1", String(bar.top));
+    bleed.setAttribute("x2", String(bar.x));
+    bleed.setAttribute("y2", String(bar.bottom));
+    bleed.setAttribute("stroke", "currentColor");
+    bleed.setAttribute("stroke-width", "3.4");
+    bleed.setAttribute("stroke-linecap", "round");
+    bleed.setAttribute("vector-effect", "non-scaling-stroke");
+    bleed.setAttribute("opacity", "0.16");
+    const main = document.createElementNS(SVG_NS, "line");
+    main.setAttribute("x1", String(bar.x));
+    main.setAttribute("y1", String(bar.top));
+    main.setAttribute("x2", String(bar.x - bar.tilt));
+    main.setAttribute("y2", String(bar.bottom));
+    main.setAttribute("stroke", "currentColor");
+    main.setAttribute("stroke-width", "2.2");
+    main.setAttribute("stroke-linecap", "round");
+    main.setAttribute("vector-effect", "non-scaling-stroke");
+    pair.append(bleed, main);
+    svg.appendChild(pair);
+  }
+}
+
+function voiceRing(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 42 42");
+  svg.setAttribute("fill", "none");
+  svg.classList.add("fb-voice__ring");
+  const outer = document.createElementNS(SVG_NS, "circle");
+  outer.setAttribute("cx", "21");
+  outer.setAttribute("cy", "21");
+  outer.setAttribute("r", "17.6");
+  outer.setAttribute("stroke", "currentColor");
+  outer.setAttribute("stroke-width", "2.1");
+  outer.setAttribute("stroke-linecap", "round");
+  outer.setAttribute("stroke-dasharray", "86 8 62 6 100 5");
+  const inner = document.createElementNS(SVG_NS, "circle");
+  inner.setAttribute("cx", "21");
+  inner.setAttribute("cy", "21");
+  inner.setAttribute("r", "19.4");
+  inner.setAttribute("stroke", "currentColor");
+  inner.setAttribute("stroke-width", "1");
+  inner.setAttribute("opacity", "0.3");
+  const play = document.createElementNS(SVG_NS, "path");
+  play.setAttribute("d", "M16.8 14.2 27.4 21l-10.6 6.8z");
+  play.setAttribute("stroke", "currentColor");
+  play.setAttribute("stroke-width", "2.4");
+  play.setAttribute("stroke-linejoin", "round");
+  play.setAttribute("stroke-linecap", "round");
+  play.classList.add("fb-voice__glyph", "fb-voice__glyph--play");
+  const pause = document.createElementNS(SVG_NS, "path");
+  pause.setAttribute("d", "M16.4 14.6v12.8M25.6 14.6v12.8");
+  pause.setAttribute("stroke", "currentColor");
+  pause.setAttribute("stroke-width", "3.1");
+  pause.setAttribute("stroke-linecap", "round");
+  pause.classList.add("fb-voice__glyph", "fb-voice__glyph--pause");
+  svg.append(outer, inner, play, pause);
+  return svg;
+}
+
+export function renderAudio(
+  el: AudioElement,
+  attachmentExists: (path: string) => boolean,
+): HTMLElement {
+  const slip = voiceElement("fb-voice");
+  slip.dataset.mount = el.mount;
+  slip.style.setProperty("--voice-ink", colorValue(el.color));
+  slip.style.setProperty("--voice-tape", colorValue("cream"));
+
+  const recording = !el.attachment;
+  if (recording) slip.classList.add("is-recording");
+  if (!recording && !attachmentExists(el.attachment)) slip.classList.add("is-missing");
+
+  slip.appendChild(voiceElement("fb-voice__grain"));
+
+  if (el.mount === "tape") {
+    const tape = voiceElement("fb-voice__tape");
+    tape.append(
+      voiceElement("fb-voice__tape-grain"),
+      voiceElement("fb-voice__tape-shine"),
+    );
+    slip.appendChild(tape);
+  } else if (el.mount === "corners") {
+    for (const corner of ["tl", "tr", "bl", "br"]) {
+      slip.appendChild(voiceElement(`fb-voice__corner fb-voice__corner--${corner}`));
+    }
+  }
+
+  const parts = voiceParts(el.w);
+
+  if (recording) {
+    const dot = voiceElement("fb-voice__rec");
+    dot.style.left = `${parts.play.x}px`;
+    dot.style.top = `${parts.play.y}px`;
+    dot.appendChild(voiceElement("fb-voice__rec-dot"));
+    slip.appendChild(dot);
+  } else {
+    const play = voiceElement("fb-voice__play");
+    play.style.left = `${parts.play.x}px`;
+    play.style.top = `${parts.play.y}px`;
+    play.appendChild(voiceRing());
+    slip.appendChild(play);
+  }
+
+  const wave = document.createElementNS(SVG_NS, "svg");
+  wave.setAttribute("class", "fb-voice__wave");
+  wave.style.left = `${parts.wave.x}px`;
+  wave.style.right = `${Math.max(1, el.w - (parts.wave.x + parts.wave.w))}px`;
+  wave.style.top = `${parts.wave.y}px`;
+  wave.style.height = `${parts.wave.h}px`;
+  paintVoiceBars(wave as SVGSVGElement, el.peaks, el.seed, el.w, recording ? 1 : 0);
+  slip.appendChild(wave);
+
+  const head = voiceElement("fb-voice__head");
+  head.style.top = `${parts.wave.y}px`;
+  head.style.height = `${parts.wave.h}px`;
+  head.style.left = `${parts.wave.x}px`;
+  slip.appendChild(head);
+
+  const meta = voiceElement("fb-voice__meta");
+  const dur = document.createElement("span");
+  dur.className = "fb-voice__dur";
+  dur.textContent = recording ? "0:00" : formatVoiceDuration(el.duration);
+  const cap = document.createElement("span");
+  cap.className = "fb-voice__cap";
+  if (recording) cap.textContent = "recording\u2026";
+  else if (slip.classList.contains("is-missing")) {
+    cap.textContent = el.attachment.split("/").pop() ?? "Missing recording";
+  } else {
+    cap.textContent = el.label.trim() || formatVoiceStamp(el.recordedAt);
+  }
+  meta.append(dur, cap);
+  slip.appendChild(meta);
+
+  return slip;
+}
+
+/** Moves the pencil playhead and lights the bars the play head has passed. */
+export function applyVoiceProgress(node: HTMLElement, ratio: number, playing: boolean): void {
+  const slip = node.querySelector<HTMLElement>(".fb-voice");
+  if (!slip) return;
+  slip.classList.toggle("is-playing", playing);
+  const parts = voiceParts(parseFloat(node.style.width) || VOICE_DEFAULT_WIDTH);
+  const pairs = slip.querySelectorAll<SVGGElement>(".fb-voice__pair");
+  pairs.forEach((pair, index) => {
+    pair.classList.toggle("is-played", index < ratio * pairs.length);
+  });
+  const head = slip.querySelector<HTMLElement>(".fb-voice__head");
+  if (!head) return;
+  head.style.left = `${parts.wave.x + ratio * parts.wave.w}px`;
+  head.style.opacity = ratio > 0.002 && ratio < 0.998 ? "1" : "0";
+}
+
+/** Live feedback while the microphone runs: growing bars and a running counter. */
+export function applyVoiceLevels(node: HTMLElement, peaks: number[], seconds: number): void {
+  const slip = node.querySelector<HTMLElement>(".fb-voice");
+  if (!slip) return;
+  const wave = slip.querySelector<SVGSVGElement>(".fb-voice__wave");
+  const dur = slip.querySelector<HTMLElement>(".fb-voice__dur");
+  if (wave) paintVoiceBars(wave, peaks, 7, parseFloat(node.style.width) || VOICE_DEFAULT_WIDTH, 1);
+  if (dur) dur.textContent = formatVoiceDuration(seconds);
 }
 
 function renderStickerSvg(variant: number): SVGElement {

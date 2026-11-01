@@ -3,6 +3,7 @@ import type { PageData, PageMeta, TextElement } from "../types";
 import type { JournalManager } from "../core/JournalManager";
 import type { StorageManager } from "../storage/StorageManager";
 import { renderInkToCanvas, safeExportName, saveCanvasPng } from "./PageSnapshot";
+import { formatVoiceDuration, formatVoiceStamp } from "../elements/VoiceWave";
 
 export interface MarkdownExportOptions {
   app: App;
@@ -32,7 +33,7 @@ export async function exportPageToMarkdown(options: MarkdownExportOptions): Prom
   lines.push("");
 
   const ordered = page.elements
-    .filter((el) => el.type === "text" || el.type === "image")
+    .filter((el) => el.type === "text" || el.type === "image" || el.type === "audio")
     .slice()
     .sort((a, b) => a.y - b.y || a.x - b.x);
 
@@ -46,6 +47,12 @@ export async function exportPageToMarkdown(options: MarkdownExportOptions): Prom
     } else if (el.type === "image") {
       if (!el.attachment) continue;
       lines.push(`![[${el.attachment}]]`);
+      lines.push("");
+    } else if (el.type === "audio") {
+      if (!el.attachment) continue;
+      lines.push(`![[${el.attachment}]]`);
+      const caption = el.label.trim() || formatVoiceStamp(el.recordedAt);
+      if (caption) lines.push(`*Voice note \u2014 ${caption}, ${formatVoiceDuration(el.duration)}*`);
       lines.push("");
     }
   }

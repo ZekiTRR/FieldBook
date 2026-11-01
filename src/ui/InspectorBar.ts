@@ -1,21 +1,26 @@
 import { setIcon } from "obsidian";
 import type {
+  AudioElement,
   DecorationElement,
   FontChoice,
   ImageElement,
   LayerId,
   ShapeElement,
   TextElement,
+  VoiceMount,
 } from "../types";
 import { FONT_OPTIONS } from "../types";
 import type { PageView, SelectionInfo } from "../page/PageView";
 import { colorValue } from "../elements/Renderer";
+import { formatVoiceDuration, formatVoiceStamp } from "../elements/VoiceWave";
 import { INK_COLORS } from "./Toolbar";
 
 export interface InspectorActions {
   onCopy: () => void;
   onCrop: (image: ImageElement) => void;
   onTape: (image: ImageElement) => void;
+  onPlayVoice: (audio: AudioElement) => void;
+  isVoicePlaying: (id: string) => boolean;
   refresh: () => void;
 }
 
@@ -53,6 +58,7 @@ export class InspectorBar {
     else if (info.image) this.buildImage(view, info.image);
     else if (info.shape) this.buildShape(view, info.shape);
     else if (info.decoration) this.buildDecoration(view, info.decoration);
+    else if (info.audio) this.buildVoice(view, info.audio);
 
     this.buildCommon(view, first.opacity, first.rotation, first.layer);
 
@@ -197,6 +203,51 @@ export class InspectorBar {
     }
   }
 
+  private buildVoice(view: PageView, audio: AudioElement): void {
+    const playGroup = group("Voice note");
+    const playing = this.actions.isVoicePlaying(audio.id);
+    const play = iconButton(playing ? "square" : "play", playing ? "Stop" : "Play", () =>
+      this.actions.onPlayVoice(audio),
+    );
+    const readout = document.createElement("span");
+    readout.className = "fb-inspector__readout";
+    readout.textContent = `${formatVoiceDuration(audio.duration)} \u00b7 ${
+      audio.mount === "none" ? "bare" : audio.mount
+    }`;
+    playGroup.append(play, readout);
+    this.el.appendChild(playGroup);
+
+    const captionGroup = group("Caption");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "fb-control";
+    input.value = audio.label;
+    input.placeholder = formatVoiceStamp(audio.recordedAt) || "What this recording is about";
+    input.setAttribute("aria-label", "Caption");
+    input.addEventListener("change", () => view.updateSelectedVoice({ label: input.value.trim() }));
+    captionGroup.appendChild(input);
+    this.el.appendChild(captionGroup);
+
+    const inkGroup = group("Ink");
+    inkGroup.appendChild(
+      this.colorSwatches(audio.color, (color) => view.updateSelectedVoice({ color })),
+    );
+    this.el.appendChild(inkGroup);
+
+    const mountGroup = group("Mount");
+    const mounts: { id: VoiceMount; label: string }[] = [
+      { id: "tape", label: "Tape" },
+      { id: "corners", label: "Corners" },
+      { id: "none", label: "Bare" },
+    ];
+    for (const option of mounts) {
+      const button = textButton(option.label, () => view.updateSelectedVoice({ mount: option.id }));
+      button.classList.toggle("is-active", audio.mount === option.id);
+      mountGroup.appendChild(button);
+    }
+    this.el.appendChild(mountGroup);
+  }
+
   private buildCommon(view: PageView, opacity: number, rotation: number, layer: string): void {
     const opacityField = rangeField("Opacity", Math.round(opacity * 100), 4, 100, 1, (value, commit) => {
       if (commit) view.commitLiveEdit("Opacity");
@@ -338,6 +389,8 @@ function selectionLabel(kind: SelectionInfo["kind"]): string {
       return "Decoration";
     case "drawing":
       return "Ink stroke";
+    case "audio":
+      return "Voice note";
     case "mixed":
       return "Selection";
     default:

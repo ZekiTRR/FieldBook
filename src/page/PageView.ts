@@ -1,6 +1,7 @@
 import type { App } from "obsidian";
 import type {
   ActiveTool,
+  AudioElement,
   BrushKind,
   BrushSettings,
   DecorKind,
@@ -23,6 +24,7 @@ import { InkRenderer } from "../drawing/InkRenderer";
 import { smoothPoint, simplifyStroke, type RawPoint } from "../drawing/Smoothing";
 import { assistStroke } from "../drawing/ShapeAssist";
 import {
+  createAudioElement,
   createDecorationElement,
   createDrawingElement,
   createImageElement,
@@ -32,8 +34,11 @@ import {
 } from "../elements/Factory";
 import {
   applyElementFrame,
+  applyVoiceLevels,
+  applyVoiceProgress,
   createElementNode,
 } from "../elements/Renderer";
+import { VOICE_HEIGHT, VOICE_MAX_WIDTH, VOICE_MIN_WIDTH, voiceParts } from "../elements/VoiceWave";
 import {
   centerOf,
   clamp,
@@ -91,6 +96,11 @@ export interface PageHost {
   openLink(link: string): void;
   notify(message: string): void;
   navigateToPage(pageId: string): void;
+  beginVoiceNote(page: PageView, point: { x: number; y: number }): void;
+  stopVoicePlacement(): void;
+  isVoicePlacement(elementId: string): boolean;
+  toggleVoiceNote(page: PageView, element: AudioElement, ratio: number): void;
+  seekVoiceNote(page: PageView, element: AudioElement, ratio: number): void;
 }
 
 export interface SelectionInfo {
@@ -100,6 +110,7 @@ export interface SelectionInfo {
   image?: ImageElement;
   shape?: ShapeElement;
   decoration?: DecorationElement;
+  audio?: AudioElement;
   bounds: Bounds | null;
 }
 
@@ -597,6 +608,7 @@ export class PageView {
     if (sameKind && first.type === "image") info.image = deepClone(first);
     if (sameKind && first.type === "shape") info.shape = deepClone(first);
     if (sameKind && first.type === "decoration") info.decoration = deepClone(first);
+    if (sameKind && first.type === "audio") info.audio = deepClone(first);
     return info;
   }
 
@@ -726,6 +738,13 @@ export class PageView {
             { kind: "rotate", x: rotatePointPos.x, y: rotatePointPos.y, rotation: single.rotation },
           ]
         : [];
+      if (single.type === "audio" && canTransform) {
+        // The strip keeps its height, so only the horizontal edges and the rotate knob are useful.
+        descriptors = descriptors.filter(
+          (descriptor) =>
+            descriptor.kind === "e" || descriptor.kind === "w" || descriptor.kind === "rotate",
+        );
+      }
       if (canTransform) {
         const stem = document.createElementNS("http://www.w3.org/2000/svg", "line");
         stem.setAttribute("x1", String(topMid.x));
@@ -840,12 +859,33 @@ export class PageView {
       this.host.afterToolUse();
       return;
     }
+    if (tool.tool === "audio") {
+      this.host.beginVoiceNote(this, point);
+      return;
+    }
 
     const hit = this.hitTest(point);
     if (hit) {
       this.selectElement(hit, event.shiftKey);
       if (event.shiftKey) {
         if (!this.selectedIds.has(hit.id)) return;
+      }
+      if (hit.type === "audio") {
+        const zone = this.voiceZone(hit, point);
+        if (zone === "play") {
+          if (this.host.isVoicePlacement(hit.id)) this.host.stopVoicePlacement();
+          else this.host.toggleVoiceNote(this, hit, this.voiceRatioAt(hit, point));
+          return;
+        }
+        if (zone === "wave") {
+          const ratio = this.voiceRatioAt(hit, point);
+          if (hit.pinned) {
+            this.host.seekVoiceNote(this, hit, ratio);
+            return;
+          }
+          if (!hit.locked) this.beginMove(event, point, () => this.host.seekVoiceNote(this, hit, ratio));
+          return;
+        }
       }
       if (!hit.pinned) {
         this.beginMove(event, point);
@@ -860,15 +900,23 @@ export class PageView {
     if (this.staticMode || !this.page || this.page.kind === "contents") return;
     if (this.activeStroke || this.eraserState) return;
     const tool = this.host.getTool();
+    const point = this.pagePoint(event);
     if (this.isEraserActive(tool)) {
-      const point = this.pagePoint(event);
       this.ink.drawEraser(point.x, point.y, tool.eraserSize / 2);
+      return;
+    }
+    if (tool.tool === "select" || tool.tool === "audio") {
+      const hit = this.hitTest(point);
+      this.setVoiceHover(hit && hit.type === "audio" ? hit : null, point);
+    } else {
+      this.setVoiceHover(null, point);
     }
   };
 
   private onPageLeave = (): void => {
     if (this.activeStroke || this.eraserState) return;
     this.ink.clearLive();
+    this.setVoiceHover(null, { x: -1, y: -1 });
   };
 
   private isEraserActive(tool: ToolState): boolean {
@@ -1185,7 +1233,11 @@ export class PageView {
   // Move / resize / rotate gestures
   // ---------------------------------------------------------------------
 
-  private beginMove(event: PointerEvent, start: { x: number; y: number }): void {
+  private beginMove(
+    event: PointerEvent,
+    start: { x: number; y: number },
+    onTap?: () => void,
+  ): void {
     if (!this.page) return;
     const selected = this.getSelectedElements().filter(
       (el) => !el.pinned && !el.locked && this.isLayerInteractive(el.layer),
@@ -1224,7 +1276,11 @@ export class PageView {
       cleanup();
       this.clearGuides();
       this.gestureCleanup = null;
-      if (!snapshot.moved || !this.page) return;
+      if (!snapshot.moved) {
+        onTap?.();
+        return;
+      }
+      if (!this.page) return;
       const before = snapshot.targets
         .map((el) => snapshot.beforeById.get(el.id))
         .filter((el): el is PageElement => !!el);
@@ -1366,9 +1422,11 @@ export class PageView {
           if (handle.includes("n")) top = bottom - MIN_ELEMENT_SIZE;
           else bottom = top + MIN_ELEMENT_SIZE;
         }
-        const newW = right - left;
-        const newH = bottom - top;
-        const newCenterLocal = { x: left + newW / 2, y: top + newH / 2 };
+        const newW = el.type === "audio"
+          ? clamp(right - left, VOICE_MIN_WIDTH, VOICE_MAX_WIDTH)
+          : right - left;
+        const newH = el.type === "audio" ? VOICE_HEIGHT : bottom - top;
+        const newCenterLocal = { x: left + (right - left) / 2, y: top + (bottom - top) / 2 };
         const centerOffset = rotateVector(
           { x: newCenterLocal.x - singleBefore.w / 2, y: newCenterLocal.y - singleBefore.h / 2 },
           rad,
@@ -1500,7 +1558,7 @@ export class PageView {
   private updateElementNode(el: PageElement): void {
     const node = this.elementNodes.get(el.id);
     if (!node) return;
-    if (el.type === "shape") {
+    if (el.type === "shape" || el.type === "audio") {
       node.replaceChildren();
       node.appendChild(createElementNode(el, (p) => this.host.resourcePath(p), (p) => this.host.attachmentExists(p)).firstElementChild ?? document.createElement("span"));
       applyElementFrame(node, el);
@@ -1686,6 +1744,137 @@ export class PageView {
     this.patchSelected("Crop photo", (el) => {
       if (el.type === "image" && el.id === imageId) el.crop = { ...crop };
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // Voice notes
+  // ---------------------------------------------------------------------
+
+  private voicePlacementId: string | null = null;
+  private voiceHover: string | null = null;
+
+  private voiceLocal(el: AudioElement, point: { x: number; y: number }): { x: number; y: number } {
+    const rotated = rotatePoint(point, -degToRad(el.rotation), centerOf(el));
+    return { x: rotated.x - el.x, y: rotated.y - el.y };
+  }
+
+  /** Which part of the note the pointer is on: the drawn ring, the ink wave, or the paper. */
+  private voiceZone(
+    el: AudioElement,
+    point: { x: number; y: number },
+  ): "play" | "wave" | null {
+    const local = this.voiceLocal(el, point);
+    const parts = voiceParts(el.w, el.h);
+    const inside = (rect: { x: number; y: number; w: number; h: number }) =>
+      local.x >= rect.x && local.x <= rect.x + rect.w && local.y >= rect.y && local.y <= rect.y + rect.h;
+    if (inside(parts.play)) return "play";
+    if (inside(parts.wave)) return "wave";
+    return null;
+  }
+
+  private voiceRatioAt(el: AudioElement, point: { x: number; y: number }): number {
+    const local = this.voiceLocal(el, point);
+    const parts = voiceParts(el.w, el.h);
+    return clamp((local.x - parts.wave.x) / Math.max(1, parts.wave.w), 0, 1);
+  }
+
+  /** Lights the drawn ring when the pointer hovers the play area. */
+  private setVoiceHover(el: AudioElement | null, point: { x: number; y: number }): void {
+    const zone = el ? this.voiceZone(el, point) : null;
+    const key = el && zone ? `${el.id}:${zone}` : "";
+    if (this.voiceHover === key) return;
+    if (this.voiceHover) {
+      const previous = this.elementNodes.get(this.voiceHover.split(":")[0])?.querySelector(".fb-voice");
+      previous?.classList.remove("is-over-play");
+    }
+    this.voiceHover = key;
+    this.root.dataset.voiceZone = zone ?? "";
+    if (zone === "play" && el) {
+      this.elementNodes.get(el.id)?.querySelector(".fb-voice")?.classList.add("is-over-play");
+    }
+  }
+
+  isVoicePlacement(elementId: string): boolean {
+    return this.voicePlacementId === elementId;
+  }
+
+  markVoicePlacement(elementId: string | null): void {
+    this.voicePlacementId = elementId;
+  }
+
+  /** The note that grows while the microphone runs; it has no file yet. */
+  createVoicePlaceholder(
+    point: { x: number; y: number },
+    options: { color: string; mount: AudioElement["mount"] },
+  ): AudioElement | null {
+    if (!this.page) return null;
+    const el = createAudioElement({
+      attachment: "",
+      duration: 0,
+      peaks: [0.06],
+      x: point.x - 172,
+      y: point.y - VOICE_HEIGHT / 2,
+      color: options.color,
+      mount: options.mount,
+      width: 344,
+    }, nextZ(this.page.elements));
+    el.rotation = -0.6;
+    this.page.elements.push(el);
+    this.render();
+    this.setSelection([el.id]);
+    this.host.onPageEdited(this);
+    return el;
+  }
+
+  updateVoiceLevels(elementId: string, peaks: number[], seconds: number): void {
+    const node = this.elementNodes.get(elementId);
+    if (node) applyVoiceLevels(node, peaks, seconds);
+  }
+
+  finishVoicePlacement(
+    elementId: string,
+    data: { attachment: string; duration: number; peaks: number[] },
+  ): void {
+    if (!this.page) return;
+    const el = this.page.elements.find(
+      (candidate): candidate is AudioElement =>
+        candidate.type === "audio" && candidate.id === elementId,
+    );
+    if (!el) return;
+    el.attachment = data.attachment;
+    el.duration = data.duration;
+    el.peaks = data.peaks;
+    this.voicePlacementId = null;
+    this.markDirty();
+    this.pushAddHistory([el], "Add voice note");
+    this.render();
+    this.setSelection([el.id]);
+    this.host.audio.play("objects");
+    this.host.onPageEdited(this);
+  }
+
+  cancelVoicePlacement(elementId: string): void {
+    if (!this.page) return;
+    this.page.elements = this.page.elements.filter((el) => el.id !== elementId);
+    this.voicePlacementId = null;
+    this.clearSelection();
+    this.render();
+    this.host.onPageEdited(this);
+  }
+
+  applyVoiceProgressTo(elementId: string, ratio: number, playing: boolean): void {
+    const node = this.elementNodes.get(elementId);
+    if (node) applyVoiceProgress(node, ratio, playing);
+  }
+
+  updateSelectedVoice(patch: Partial<AudioElement>): void {
+    this.patchSelected("Adjust voice note", (el) => {
+      if (el.type === "audio") Object.assign(el, patch);
+    });
+  }
+
+  resetVoiceProgress(elementId: string): void {
+    this.applyVoiceProgressTo(elementId, 0, false);
   }
 
   // ---------------------------------------------------------------------

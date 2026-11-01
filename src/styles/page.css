@@ -328,6 +328,15 @@
   cursor: copy;
 }
 
+.fb-page[data-tool="audio"] {
+  cursor: copy;
+}
+
+.fb-page[data-voice-zone="play"],
+.fb-page[data-voice-zone="wave"] {
+  cursor: pointer;
+}
+
 .fb-page[data-tool="select"] .fb-text {
   cursor: default;
 }

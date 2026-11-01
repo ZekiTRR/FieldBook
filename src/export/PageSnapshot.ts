@@ -1,5 +1,6 @@
 import type { App } from "obsidian";
 import type {
+  AudioElement,
   DecorationElement,
   DrawingElement,
   ImageElement,
@@ -12,6 +13,7 @@ import type { JournalManager } from "../core/JournalManager";
 import type { StorageManager } from "../storage/StorageManager";
 import { THEME_MAP, type ThemeDefinition } from "../themes";
 import { PALETTE } from "../elements/Renderer";
+import { formatVoiceDuration, formatVoiceStamp, voiceBars, voiceParts } from "../elements/VoiceWave";
 import { renderDrawingElement } from "../drawing/BrushRenderer";
 import { centerOf } from "../utils";
 
@@ -241,6 +243,7 @@ export async function renderPageToCanvas(options: SnapshotOptions): Promise<HTML
         else if (el.type === "image") drawImage(ctx, el, palette, images);
         else if (el.type === "shape") drawShape(ctx, el, palette);
         else if (el.type === "decoration") drawDecoration(ctx, el, palette);
+        else if (el.type === "audio") drawVoice(ctx, el, palette);
         else if (el.type === "drawing") {
           const clone = { ...el, sampleOpacity: el.sampleOpacity * el.opacity } as DrawingElement;
           renderDrawingElement(ctx, clone, (value) => resolveColor(value, palette), palette.dark);
@@ -594,6 +597,107 @@ function drawDecoration(ctx: CanvasRenderingContext2D, el: DecorationElement, pa
     }
   }
   ctx.restore();
+}
+
+function drawVoice(ctx: CanvasRenderingContext2D, el: AudioElement, palette: SnapshotPalette): void {
+  const center = centerOf(el);
+  ctx.translate(center.x, center.y);
+  ctx.rotate((el.rotation * Math.PI) / 180);
+  ctx.translate(-el.w / 2, -el.h / 2);
+
+  const parts = voiceParts(el.w, el.h);
+  const ink = resolveColor(el.color, palette);
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.26)";
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 3;
+  ctx.fillStyle = palette.dark ? "rgba(52,48,42,0.95)" : "rgba(241,232,209,0.9)";
+  roundRect(ctx, 0, 0, el.w, el.h, 3);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.strokeStyle = palette.dark ? "#1b1916" : "#c9b78f";
+  ctx.lineWidth = 1;
+  roundRect(ctx, 0.5, 0.5, el.w - 1, el.h - 1, 3);
+  ctx.stroke();
+
+  if (el.mount === "tape") {
+    ctx.save();
+    ctx.translate(-12 + 46, -13 + 13.5);
+    ctx.rotate((-7 * Math.PI) / 180);
+    ctx.fillStyle = palette.dark ? "rgba(216,174,111,0.28)" : "rgba(221,210,182,0.6)";
+    ctx.fillRect(-46, -13.5, 92, 27);
+    ctx.restore();
+  } else if (el.mount === "corners") {
+    const size = 26;
+    ctx.fillStyle = palette.dark ? "rgba(216,174,111,0.24)" : "rgba(210,196,160,0.75)";
+    const fold = (points: [number, number][]) => {
+      ctx.beginPath();
+      points.forEach(([x, y], index) => (index ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.closePath();
+      ctx.fill();
+    };
+    fold([[0, 0], [size, 0], [0, size]]);
+    fold([[el.w, 0], [el.w - size, 0], [el.w, size]]);
+    fold([[0, el.h], [size, el.h], [0, el.h - size]]);
+    fold([[el.w, el.h], [el.w - size, el.h], [el.w, el.h - size]]);
+  }
+
+  const bars = voiceBars(el.peaks, el.seed, el.w);
+  ctx.lineCap = "round";
+  ctx.strokeStyle = ink;
+  for (const bar of bars) {
+    const top = parts.wave.y + bar.top;
+    const bottom = parts.wave.y + bar.bottom;
+    ctx.globalAlpha = 0.16;
+    ctx.lineWidth = 3.4;
+    ctx.beginPath();
+    ctx.moveTo(bar.x + bar.tilt, top);
+    ctx.lineTo(bar.x, bottom);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(bar.x, top);
+    ctx.lineTo(bar.x - bar.tilt, bottom);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  const cx = parts.play.x + parts.play.w / 2;
+  const cy = parts.play.y + parts.play.h / 2;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2.1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 17.6, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 0.3;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 19.4, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(cx - 4.2, cy - 6.8);
+  ctx.lineTo(cx + 6.4, cy);
+  ctx.lineTo(cx - 4.2, cy + 6.8);
+  ctx.closePath();
+  ctx.stroke();
+
+  const caption = el.label.trim() || formatVoiceStamp(el.recordedAt);
+  ctx.textAlign = "right";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = ink;
+  ctx.font = `500 22px ${palette.titleFont}`;
+  ctx.fillText(formatVoiceDuration(el.duration), el.w - 13, cy - 1);
+  if (caption) {
+    ctx.fillStyle = palette.inkSoft;
+    ctx.font = `400 11.5px ${palette.bodyFont}`;
+    ctx.fillText(caption, el.w - 13, cy + 15);
+  }
 }
 
 function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number, points: number): void {

@@ -7,6 +7,7 @@ import {
   uid,
 } from "../utils";
 import type {
+  AudioElement,
   BrushSettings,
   DecorationElement,
   DrawingElement,
@@ -19,6 +20,7 @@ import type {
   ShapeKind,
   TextElement,
 } from "../types";
+import { VOICE_HEIGHT, VOICE_MIN_WIDTH } from "./VoiceWave";
 
 const BASE: Omit<ElementBase, "id" | "type" | "layer" | "x" | "y" | "w" | "h" | "z"> = {
   rotation: 0,
@@ -200,6 +202,43 @@ export function createDrawingElement(data: DrawingCreation, z = 1): DrawingEleme
     seed: Math.floor(Math.random() * 1e9),
     baseW: w,
     baseH: h,
+  };
+}
+
+export interface AudioCreation {
+  attachment: string;
+  duration: number;
+  peaks: number[];
+  x: number;
+  y: number;
+  color?: string;
+  label?: string;
+  mount?: AudioElement["mount"];
+  recordedAt?: string;
+  width?: number;
+}
+
+export function createAudioElement(data: AudioCreation, z = 1): AudioElement {
+  return {
+    ...BASE,
+    id: uid("el"),
+    type: "audio",
+    layer: "content",
+    x: data.x,
+    y: data.y,
+    w: Math.max(VOICE_MIN_WIDTH, data.width ?? 344),
+    h: VOICE_HEIGHT,
+    z,
+    rotation: -0.6 + Math.random() * 1.2,
+    opacity: 1,
+    attachment: data.attachment,
+    duration: Math.max(0.2, data.duration),
+    peaks: data.peaks.length ? data.peaks : [0.2],
+    seed: Math.floor(Math.random() * 1e9),
+    color: data.color ?? "ink",
+    label: data.label ?? "",
+    mount: data.mount ?? "tape",
+    recordedAt: data.recordedAt ?? nowIso(),
   };
 }
 

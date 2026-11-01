@@ -2,6 +2,7 @@ import {
   DATA_VERSION,
   DEFAULT_JOURNAL_SETTINGS,
   DEFAULT_LAYERS,
+  type AudioElement,
   type DecorationElement,
   type DrawingElement,
   type ElementBase,
@@ -22,12 +23,14 @@ import {
   type ThemeId,
   type TrashedPage,
 } from "../types";
-import { uid } from "../utils";
+import { uid, nowIso } from "../utils";
+import { VOICE_HEIGHT, VOICE_MAX_WIDTH, VOICE_MIN_WIDTH } from "../elements/VoiceWave";
 
 const LAYER_IDS: LayerId[] = ["background", "content", "drawings", "decorations"];
 const TAB_COLORS: TabColor[] = ["cream", "ocean", "sage", "rust", "plum", "gold", "charcoal", "rose"];
 const THEMES: ThemeId[] = ["classic", "manuscript", "clean", "dark", "field"];
 const BACKGROUNDS: PageBackground[] = ["plain", "ruled", "grid", "dots"];
+const VOICE_MOUNTS: AudioElement["mount"][] = ["tape", "corners", "none"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -191,6 +194,31 @@ function normalizeElement(raw: unknown): PageElement | null {
     };
     return el;
   }
+  if (type === "audio") {
+    const base = normalizeBase(raw, "audio");
+    base.w = num(base.w, 344, VOICE_MIN_WIDTH, VOICE_MAX_WIDTH);
+    base.h = VOICE_HEIGHT;
+    const rawPeaks = Array.isArray(raw.peaks) ? raw.peaks : [];
+    const peaks = rawPeaks
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+      .map((value) => Math.max(0, Math.min(1, value)))
+      .slice(0, 240);
+    const el: AudioElement = {
+      ...base,
+      type: "audio",
+      attachment: str(raw.attachment, ""),
+      duration: num(raw.duration, 0, 0, 3600),
+      peaks: peaks.length ? peaks : [0.08],
+      seed: Math.round(num(raw.seed, Math.random() * 1e9)),
+      color: str(raw.color, "ink"),
+      label: str(raw.label, ""),
+      mount: VOICE_MOUNTS.includes(str(raw.mount) as AudioElement["mount"])
+        ? (raw.mount as AudioElement["mount"])
+        : "tape",
+      recordedAt: str(raw.recordedAt, nowIso()),
+    };
+    return el;
+  }
   return null;
 }
 
@@ -282,6 +310,15 @@ export function normalizeJournalSettings(raw: unknown): JournalSettings {
     snapToGrid: bool(record.snapToGrid, d.snapToGrid),
     gridSize: num(record.gridSize, d.gridSize, 4, 200),
     showContents: bool(record.showContents, d.showContents),
+    voice: (() => {
+      const voice = isRecord(record.voice) ? record.voice : {};
+      return {
+        color: str(voice.color, d.voice.color),
+        mount: VOICE_MOUNTS.includes(voice.mount as AudioElement["mount"])
+          ? (voice.mount as AudioElement["mount"])
+          : d.voice.mount,
+      };
+    })(),
     brushes: {
       pen: brush("pen", d.brushes.pen),
       pencil: brush("pencil", d.brushes.pencil),

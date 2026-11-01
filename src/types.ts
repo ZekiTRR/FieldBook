@@ -24,13 +24,14 @@ export type TabColor =
   | "charcoal"
   | "rose";
 
-export type ElementType = "text" | "image" | "shape" | "decoration" | "drawing";
+export type ElementType = "text" | "image" | "shape" | "decoration" | "drawing" | "audio";
 export type LayerId = "background" | "content" | "drawings" | "decorations";
 export type FontChoice = "body" | "title" | "serif" | "mono";
 export type BrushKind = "pen" | "pencil" | "marker" | "highlighter";
 export type DrawTool = BrushKind | "eraser";
-export type ActiveTool = "select" | "text" | "draw" | "shape" | "decorate";
+export type ActiveTool = "select" | "text" | "draw" | "shape" | "decorate" | "audio";
 export type ShapeKind = "line" | "arrow" | "rect" | "ellipse" | "polygon";
+export type VoiceMount = "tape" | "corners" | "none";
 export type DecorKind =
   | "tape"
   | "glue"
@@ -80,6 +81,11 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   customSounds: { page: "", tabs: "", writing: "", objects: "", ui: "" },
 };
 
+export interface VoiceDefaults {
+  color: string;
+  mount: VoiceMount;
+}
+
 export interface JournalSettings {
   theme: ThemeId;
   pageWidth: number;
@@ -96,6 +102,7 @@ export interface JournalSettings {
   snapToGrid: boolean;
   gridSize: number;
   showContents: boolean;
+  voice: VoiceDefaults;
   brushes: {
     pen: BrushSettings;
     pencil: BrushSettings;
@@ -123,6 +130,7 @@ export const DEFAULT_JOURNAL_SETTINGS: JournalSettings = {
   snapToGrid: false,
   gridSize: 20,
   showContents: true,
+  voice: { color: "ink", mount: "tape" },
   brushes: {
     pen: { color: "#26303b", size: 3.2, opacity: 1, pressure: true, assist: true },
     pencil: { color: "#4a4740", size: 3.6, opacity: 0.78, pressure: true, assist: true },
@@ -276,12 +284,25 @@ export interface DrawingElement extends ElementBase {
   baseH: number;
 }
 
+export interface AudioElement extends ElementBase {
+  type: "audio";
+  attachment: string;
+  duration: number;
+  peaks: number[];
+  seed: number;
+  color: string;
+  label: string;
+  mount: VoiceMount;
+  recordedAt: string;
+}
+
 export type PageElement =
   | TextElement
   | ImageElement
   | ShapeElement
   | DecorationElement
-  | DrawingElement;
+  | DrawingElement
+  | AudioElement;
 
 export interface PageData {
   version: number;

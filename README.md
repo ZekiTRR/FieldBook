@@ -23,6 +23,7 @@ Everything stays inside your vault. No cloud, no account, no payment and no netw
 - **Shape assist.** A "Straighten shapes" switch per tool in the dock: a shaky line becomes straight, a scribbled circle becomes an ellipse and a rough box becomes a rectangle. It is deliberately conservative — intentional curves stay untouched — and it turns off with one click.
 - **Real paper.** Grain, lighting, a curved gutter and ruled, grid or dot layouts. Any image in your vault can become the paper texture; ink automatically adapts to light or dark paper.
 - **Photographs and ephemera.** Insert from a file, the clipboard or drag-and-drop; crop, tape, photo corners, stickers, bookmarks, frames and highlight strips.
+- **Dictaphone.** Press `R`, click where the note should live, and speak. The take becomes a strip of paper with a hand-drawn play ring, an ink waveform built from the real peaks and a handwritten duration. Tap the ring to play, tap the wave to jump, and choose tape, photo corners or bare paper in the inspector.
 - **Bookmarks on top.** Tabs with icons and colours (Cream, Ocean, Sage, Rust, Plum, Gold, Charcoal, Rose), reorderable by dragging.
 - **Structure.** A page manager, trash, a contents page and page moves between tabs.
 - **Sound.** A recorded page turn, a real pencil-on-paper loop, quiet typing and per-category volumes. Every sound can be replaced with your own file.
@@ -56,7 +57,9 @@ Open the notebook with the `Fieldbook: Open notebook` command or the ribbon icon
 
 ## Usage
 
-- `V` selects, `T` creates text, `P` draws, `E` erases and `I` inserts a photo. Shortcuts follow the physical key, so they work on Russian, French or any other layout. Tools live on the left rail; the palette and brush settings live in the right-hand dock.
+- `V` selects, `T` creates text, `P` draws, `E` erases, `I` inserts a photo and `R` arms the dictaphone. Shortcuts follow the physical key, so they work on Russian, French or any other layout. Tools live on the left rail; the palette and brush settings live in the right-hand dock.
+- With the dictaphone armed, one click on the page starts the take: the strip grows live bars and a running counter while the microphone is open. Tap the red dot or use the dock to keep it, `Esc` discards the take, and recording stops at five minutes.
+- A selected voice note answers to `Space` for play and pause. Tapping the ink wave jumps to that moment; dragging the side handles only changes the width, so the strip never loses its proportion.
 - Double-click a page to start a text block. Drag photographs onto a page or paste them from the clipboard.
 - The brush dock carries two switches: "Pen pressure" and "Straighten shapes". Both are remembered per pen, pencil, marker and highlighter.
 - Right-click or double-click a top tab for rename, **Tab colour**, icon and new page. Tab colours apply instantly.
@@ -67,7 +70,7 @@ Open the notebook with the `Fieldbook: Open notebook` command or the ribbon icon
 
 - **Notebook.** Theme, heading and body fonts, paper texture.
 - **Book.** Page-turn animation and speed, on-screen notebook size, page numbers, snap to grid, virtual page size, autosave delay.
-- **Files.** The notebook folder, the attachments folder (photographs, pasted images, imported sounds) and the exports folder. A value without a leading `/` is relative to the notebook folder (`Media` → `Fieldbook/Media`); a leading `/` addresses the vault root (`/98 - Cache/Fieldbook`).
+- **Files.** The notebook folder, the attachments folder (photographs, voice recordings under `audio/`, pasted images, imported sounds) and the exports folder. A value without a leading `/` is relative to the notebook folder (`Media` → `Fieldbook/Media`); a leading `/` addresses the vault root (`/98 - Cache/Fieldbook`).
 - **Sound.** Global sound, volume, keyboard writing sound, page-turn recording and per-category volumes: Page turns, Tabs, Pen & pencil, Photos & tape, Interface.
 - **Page.** Background for new pages (plain, ruled, grid, dots), contents, size.
 - **Tabs.** Colour and icon for every bookmark.
@@ -78,7 +81,8 @@ These are the disclosures for the [Obsidian developer policies](https://docs.obs
 
 - **No network use.** The plugin never contacts a remote service. It has no backend, no update checks, no analytics and no telemetry. Bundled fonts, sounds and images ship inside the plugin folder.
 - **No account and no payment.** Every feature is free.
-- **Files written, all inside your vault:** the notebook folder (default `Fieldbook/`) with `journal.json`, `pages/*.json`, `.bak` recovery copies, the attachments folder for photographs and imported sounds, the exports folder for Markdown and PNG output, and `data.json` in the plugin folder for plugin settings. All locations are configurable under **Settings → Fieldbook → Files**.
+- **Microphone access, only while you record.** The dictaphone uses `navigator.mediaDevices.getUserMedia({ audio: true })` and `MediaRecorder`. Sound is captured solely during a take that you start, encoded on your machine and written into the notebook's attachments folder. Nothing is uploaded, no other feature touches the microphone, and declining the permission leaves the rest of the plugin working.
+- **Files written, all inside your vault:** the notebook folder (default `Fieldbook/`) with `journal.json`, `pages/*.json`, `.bak` recovery copies, the attachments folder for photographs, voice recordings and imported sounds, the exports folder for Markdown and PNG output, and `data.json` in the plugin folder for plugin settings. All locations are configurable under **Settings → Fieldbook → Files**.
 - **Files read:** only the vault files you explicitly choose — a custom paper texture, a replacement page-turn or writing sound, and photographs you insert, paste or drag onto a page.
 - **Desktop only.** Fieldbook relies on continuous pointer capture, pressure data and low-latency Web Audio, so `isDesktopOnly` is `true` and the plugin is not offered on mobile.
 - **Not affiliated with Obsidian.** Fieldbook is an independent community plugin built on the public Obsidian API.
@@ -91,7 +95,7 @@ By default the notebook lives in a `Fieldbook/` folder in your vault:
 Fieldbook/
 ├── journal.json      # tabs, page order, settings
 ├── pages/            # one JSON file per page
-├── attachments/      # photographs and imported sounds
+├── attachments/      # photographs, voice recordings under audio/, imported sounds
 └── exports/          # Markdown and PNG exports
 ```
 

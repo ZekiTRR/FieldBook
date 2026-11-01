@@ -1,7 +1,16 @@
 import { setIcon } from "obsidian";
-import type { ActiveTool, BrushKind, BrushSettings, DecorKind, ShapeKind } from "../types";
+import type {
+  ActiveTool,
+  BrushKind,
+  BrushSettings,
+  DecorKind,
+  ShapeKind,
+  VoiceDefaults,
+  VoiceMount,
+} from "../types";
 import type { ToolState } from "../page/PageView";
 import { colorValue } from "../elements/Renderer";
+import { formatVoiceDuration } from "../elements/VoiceWave";
 import { openPopover, popoverDivider, popoverHeading, popoverItem } from "./Popover";
 
 export const INK_COLORS: { color: string; label: string }[] = [
@@ -17,6 +26,12 @@ export const INK_COLORS: { color: string; label: string }[] = [
   { color: "white", label: "Chalk" },
 ];
 
+export interface VoiceDockState {
+  recording: boolean;
+  seconds: number;
+  level: number;
+}
+
 export interface ToolbarActions {
   getTool(): ToolState;
   onTool(tool: ActiveTool): void;
@@ -25,6 +40,11 @@ export interface ToolbarActions {
   onEraserSize(value: number): void;
   onShape(shape: ShapeKind): void;
   onDecor(kind: DecorKind): void;
+  getVoice(): VoiceDefaults;
+  getVoiceDock(): VoiceDockState;
+  onVoicePatch(patch: Partial<VoiceDefaults>): void;
+  onVoiceStop(): void;
+  onVoiceCancel(): void;
   onImageUpload(): void;
   onImageVault(): void;
   onUndo(): void;
@@ -58,6 +78,9 @@ export class Toolbar {
   private sizeLabel: HTMLElement | null = null;
   private opacityLabel: HTMLElement | null = null;
   private colorInput: HTMLInputElement | null = null;
+  private voiceTimerEl: HTMLElement | null = null;
+  private voiceLevelEl: HTMLElement | null = null;
+  private voiceCapEl: HTMLElement | null = null;
 
   constructor(parent: HTMLElement, actions: ToolbarActions) {
     this.actions = actions;
@@ -95,6 +118,7 @@ export class Toolbar {
         label: "Decorations",
         action: (button) => this.decorMenu(button),
       },
+      { id: "audio", icon: "mic", label: "Dictaphone (R)", action: () => this.actions.onTool("audio") },
       { id: "undo", icon: "undo-2", label: "Undo (Ctrl+Z)", action: () => this.actions.onUndo(), separatorBefore: true },
       { id: "redo", icon: "redo-2", label: "Redo (Ctrl+Shift+Z)", action: () => this.actions.onRedo() },
       { id: "layers", icon: "layers", label: "Layers", action: (button) => this.actions.onLayers(button), separatorBefore: true },
@@ -137,27 +161,149 @@ export class Toolbar {
       draw: tool.tool === "draw" && tool.brush !== "eraser",
       eraser: tool.tool === "draw" && tool.brush === "eraser",
       decorate: tool.tool === "decorate",
+      audio: tool.tool === "audio",
     };
     for (const [id, button] of this.buttons) {
       button.classList.toggle("is-active", !!active[id]);
     }
     if (this.undoButton) this.undoButton.disabled = !this.actions.canUndo();
     if (this.redoButton) this.redoButton.disabled = !this.actions.canRedo();
-    const key = `${tool.tool}:${tool.brush}`;
-    const shouldShow = tool.tool === "draw";
+    const voice = this.actions.getVoiceDock();
+    const dockTool = voice.recording ? "audio" : tool.tool;
+    const key = `${dockTool}:${tool.brush}:${voice.recording ? "recording" : "armed"}`;
+    const shouldShow = dockTool === "draw" || dockTool === "audio";
     this.dockEl.classList.toggle("is-visible", shouldShow);
     if (shouldShow && key !== this.dockKey) {
       this.dockKey = key;
-      this.buildDock(tool);
+      this.buildDock(dockTool);
     } else if (!shouldShow) {
       this.dockKey = "";
       this.dockEl.replaceChildren();
     }
-    if (shouldShow) this.syncDockValues(tool);
+    if (shouldShow && dockTool === "draw") this.syncDockValues(tool);
+    if (shouldShow && dockTool === "audio") this.syncVoiceDock(voice);
   }
 
-  private buildDock(tool: ToolState): void {
+  private buildVoiceDock(): void {
+    const voice = this.actions.getVoice();
+    const state = this.actions.getVoiceDock();
+    const header = document.createElement("div");
+    header.className = "fb-dock__header";
+    const title = document.createElement("span");
+    title.className = "fb-dock__title";
+    title.textContent = "Dictaphone";
+    const hint = document.createElement("span");
+    hint.className = "fb-dock__hint";
+    hint.textContent = state.recording ? "Recording" : "Click the page to place the note";
+    header.append(title, hint);
+    this.dockEl.appendChild(header);
+
+    if (state.recording) {
+      const timer = document.createElement("div");
+      timer.className = "fb-voice__timer";
+      timer.textContent = formatVoiceDuration(state.seconds);
+      this.voiceTimerEl = timer;
+      const meter = document.createElement("div");
+      meter.className = "fb-voice-meter";
+      const fill = document.createElement("div");
+      fill.className = "fb-voice-meter__fill";
+      fill.style.transform = `scaleX(${Math.min(1, state.level)})`;
+      meter.appendChild(fill);
+      this.voiceLevelEl = fill;
+      this.dockEl.append(timer, meter);
+
+      const actions = document.createElement("div");
+      actions.className = "fb-dock__brushes";
+      const stop = document.createElement("button");
+      stop.type = "button";
+      stop.className = "fb-dock__brush is-active";
+      stop.textContent = "Stop and keep";
+      stop.addEventListener("click", () => this.actions.onVoiceStop());
+      const discard = document.createElement("button");
+      discard.type = "button";
+      discard.className = "fb-dock__brush";
+      discard.textContent = "Discard take";
+      discard.addEventListener("click", () => this.actions.onVoiceCancel());
+      actions.append(stop, discard);
+      this.dockEl.appendChild(actions);
+
+      const cap = document.createElement("div");
+      cap.className = "fb-dock__note";
+      cap.textContent = "Up to 5 minutes. Esc discards the take.";
+      this.voiceCapEl = cap;
+      this.dockEl.appendChild(cap);
+      return;
+    }
+
+    const colors = document.createElement("div");
+    colors.className = "fb-dock__colors";
+    for (const swatch of INK_COLORS) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "fb-swatch";
+      button.dataset.color = swatch.color;
+      button.title = swatch.label;
+      button.style.setProperty("--swatch", colorValue(swatch.color));
+      button.style.backgroundColor = colorValue(swatch.color);
+      button.classList.toggle("is-active", voice.color === swatch.color);
+      button.addEventListener("click", () => {
+        this.actions.onVoicePatch({ color: swatch.color });
+        colors.querySelectorAll(".fb-swatch").forEach((s) => s.classList.remove("is-active"));
+        button.classList.add("is-active");
+      });
+      colors.appendChild(button);
+    }
+    this.dockEl.appendChild(colors);
+
+    const mounts = document.createElement("div");
+    mounts.className = "fb-dock__brushes";
+    const options: { id: VoiceMount; label: string }[] = [
+      { id: "tape", label: "Tape" },
+      { id: "corners", label: "Corners" },
+      { id: "none", label: "Bare" },
+    ];
+    for (const option of options) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "fb-dock__brush";
+      button.textContent = option.label;
+      button.classList.toggle("is-active", voice.mount === option.id);
+      button.addEventListener("click", () => {
+        this.actions.onVoicePatch({ mount: option.id });
+        mounts.querySelectorAll(".fb-dock__brush").forEach((s) => s.classList.remove("is-active"));
+        button.classList.add("is-active");
+      });
+      mounts.appendChild(button);
+    }
+    this.dockEl.appendChild(mounts);
+
+    const note = document.createElement("div");
+    note.className = "fb-dock__note";
+    note.textContent =
+      "The note lands where you click and records straight away. Tap the drawn ring to play, tap the ink wave to jump.";
+    this.dockEl.appendChild(note);
+  }
+
+  private syncVoiceDock(state: VoiceDockState): void {
+    if (this.voiceTimerEl) this.voiceTimerEl.textContent = formatVoiceDuration(state.seconds);
+    if (this.voiceLevelEl) {
+      this.voiceLevelEl.style.transform = `scaleX(${Math.min(1, Math.max(0.02, state.level))})`;
+    }
+    if (this.voiceCapEl && state.recording) {
+      this.voiceCapEl.textContent = `${formatVoiceDuration(state.seconds)} recorded · up to 5:00`;
+    }
+  }
+
+  private buildDock(dockTool: ActiveTool): void {
+    const tool = this.actions.getTool();
     this.dockEl.replaceChildren();
+    this.voiceTimerEl = null;
+    this.voiceLevelEl = null;
+    this.voiceCapEl = null;
+    if (dockTool === "audio") {
+      this.buildVoiceDock();
+      return;
+    }
     this.sizeLabel = null;
     this.opacityLabel = null;
     this.colorInput = null;

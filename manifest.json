@@ -1,7 +1,7 @@
 {
   "id": "fieldbook",
   "name": "Fieldbook",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "minAppVersion": "1.5.0",
   "description": "Interactive paper notebook with a real book feel: two-page spread, handwriting, photos, tape, layers and Markdown export.",
   "author": "YOKOSHIP",
